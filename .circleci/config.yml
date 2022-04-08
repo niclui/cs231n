@@ -1,0 +1,30 @@
+jobs:
+  build:
+    executor: python/default
+    steps:
+      - checkout
+      - run:
+          command: sudo apt-get update && sudo apt-get install libopenblas-dev liblapack-dev && python -m pip install --upgrade pip --pre
+          name: 'Install System Dependencies'
+      - run:
+          command: pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          name: 'Install Torch Dependencies'
+      - run:
+          command: python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cpu/torch1.7/index.html
+          name: 'Install Detectron2'
+      - python/install-packages:
+          pip-dependency-file: requirements.txt
+          pkg-manager: pip
+      - run:
+          command: python -m pip install efficientnet-pytorch==0.7.1
+          name: 'Install effcientnet'
+      - run:
+          command: python -m unittest discover test
+          name: 'Test'
+orbs:
+  python: circleci/python@1.1.0
+version: 2.1
+workflows:
+  main:
+    jobs:
+      - build
