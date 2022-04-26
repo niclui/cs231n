@@ -15,11 +15,19 @@ This is a starter repo providing skeleton of ML projects for image classificatio
 
 ### Download Kaggle datasets
 `pip install kaggle`
+
 `Follow instructions here to create API token: https://github.com/Kaggle/kaggle-api#api-credentials`
+
 `kaggle competitions download -c uw-madison-gi-tract-image-segmentation`
 
-### Unzip dataset once you have it installed
+### Unzip dataset once you have it installed. The dataset should be in a folder called train
 `tar -xvzf uw-madison-gi-tract-image-segmentation.zip`
+
+[Optional] Rename dataset folder to something more intuitive
+
+`import os`
+
+`os.rename("train", "datasets")`
 
 ### Train and save a model 
 `python main.py train --<hyperparameter> value`
