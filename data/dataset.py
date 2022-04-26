@@ -12,7 +12,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
         self._df = pd.read_csv(dataset_path) # Careful of index_col here
         self._image_path = self._df['image_path']
         self._mask_path = self._df['mask_path']         
-        self._transforms = transforms # We will need a proper transformation pipeline
+        self._transforms = T.ToTensor() # Now its just converting to tensor. But add other transformations later on
         
     def __len__(self):
         return len(self._df)
@@ -20,11 +20,10 @@ class SegmentationDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         image = Image.open(self._image_path[index]).convert('RGB')
         mask = np.load(self._mask_path[index])
-        mask = torch.tensor(mask)
-        mask = np.transpose(mask, (2, 0, 1))
+        mask = torch.tensor(np.float64(mask))
         if self._transforms is not None:
             image = self._transforms(image)
-        return torch.tensor(image, dtype=torch.float), mask        
+        return image, mask          
 
 class ImageClassificationDataset(torch.utils.data.Dataset):
     def __init__(self, image_path=None, labels=None, transforms=None):
