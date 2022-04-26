@@ -6,6 +6,21 @@ This is a starter repo providing skeleton of ML projects for image classificatio
 
 
 ## Quick start
+### Set up virtual environment
+`conda env create -f environment.yml`
+
+`conda activate cs231n`
+
+`pip install -r requirements.txt`
+
+### Download Kaggle datasets
+`pip install kaggle`
+`Follow instructions here to create API token: https://github.com/Kaggle/kaggle-api#api-credentials`
+`kaggle competitions download -c uw-madison-gi-tract-image-segmentation`
+
+### Unzip dataset once you have it installed
+`tar -xvzf uw-madison-gi-tract-image-segmentation.zip`
+
 ### Train and save a model 
 `python main.py train --<hyperparameter> value`
 
