@@ -19,9 +19,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         image = Image.open(self._image_path[index]).convert('RGB')
-        mask = np.load(self._mask_path[index])
+        mask = np.load(self._mask_path[index]) # Issue: Mask goes from (266,266) to (266*266,)
         mask = torch.tensor(mask)
-        mask = np.transpose(mask, (2, 0, 1))
         if self._transforms is not None:
             image = self._transforms(image)
         return torch.tensor(image, dtype=torch.float), mask        
