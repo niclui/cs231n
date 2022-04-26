@@ -23,7 +23,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
         mask = torch.tensor(np.float64(mask))
         if self._transforms is not None:
             image = self._transforms(image)
-        return image, mask          
+        return image, mask         
 
 class ImageClassificationDataset(torch.utils.data.Dataset):
     def __init__(self, image_path=None, labels=None, transforms=None):
