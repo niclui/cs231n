@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import torch
 from PIL import Image
 import torchvision.transforms as T
@@ -6,6 +7,24 @@ from detectron2.data import DatasetMapper
 
 from util import constants as C
 
+class SegmentationDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset_path, transforms=None):
+        self._df = pd.read_csv(dataset_path) # Careful of index_col here
+        self._image_path = self._df['image_path']
+        self._mask_path = self._df['mask_path']         
+        self._transforms = transforms # We will need a proper transformation pipeline
+        
+    def __len__(self):
+        return len(self._df)
+
+    def __getitem__(self, index):
+        image = Image.open(self._image_path[index]).convert('RGB')
+        mask = np.load(self._mask_path[index])
+        mask = torch.tensor(mask)
+        mask = np.transpose(mask, (2, 0, 1))
+        if self._transforms is not None:
+            image = self._transforms(image)
+        return torch.tensor(image, dtype=torch.float), mask        
 
 class ImageClassificationDataset(torch.utils.data.Dataset):
     def __init__(self, image_path=None, labels=None, transforms=None):
