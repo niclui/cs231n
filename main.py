@@ -55,20 +55,21 @@ def train(save_dir="./sandbox",
     Returns: None
 
     """
-    args = Args(locals())
-    init_exp_folder(args)
-    task = get_task(args)
-    trainer = Trainer(gpus=gpus,
+    args = Args(locals()) #Allows you to access stuff in the dictionary as args.exp_name
+    init_exp_folder(args) #Sets up experiment directory 
+    task = get_task(args) #Have to define this pytorch lightning module, for implementation, where constructor in segmentation.py is called
+    #Then you instantiate trainer and start training
+    trainer = Trainer(gpus=gpus, 
                       accelerator=accelerator,
-                      logger=get_logger(logger_type, save_dir, exp_name),
-                      callbacks=[get_early_stop_callback(patience),
-                                 get_ckpt_callback(save_dir, exp_name)],
-                      weights_save_path=os.path.join(save_dir, exp_name),
+                      logger=get_logger(logger_type, save_dir, exp_name), #Logging tool
+                      callbacks=[get_early_stop_callback(patience), #Set number of epochs without improvement before stopping
+                                 get_ckpt_callback(save_dir, exp_name)], #Save model checkpoints to folder, defined by certain metrics
+                      weights_save_path=os.path.join(save_dir, exp_name), 
                       gradient_clip_val=gradient_clip_val,
-                      limit_train_batches=limit_train_batches,
+                      limit_train_batches=limit_train_batches, #When debugging, limit number of batches to run (percentage of data)
                       weights_summary=weights_summary,
                       stochastic_weight_avg=stochastic_weight_avg,
-                      max_epochs=max_epochs)
+                      max_epochs=max_epochs) #Handles functionality of training
     trainer.fit(task)
 
 
@@ -92,4 +93,4 @@ def test(ckpt_path,
 
 
 if __name__ == "__main__":
-    fire.Fire()
+    fire.Fire() #Allows you to run functions and supply arguments directly in command line

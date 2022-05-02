@@ -1,6 +1,6 @@
 import segmentation_models_pytorch as smp
 from torch import nn
-
+import torch
 
 class SegmentationModel(nn.Module):
     """Segmentation model interface."""
@@ -33,6 +33,7 @@ class SMPModel(SegmentationModel):
             model_args=None):
         num_classes = model_args.get("num_classes", None)
         num_channels= model_args.get("num_channels", 3)
+        
         encoder_name = model_args.get("encoder", None) 
         encoder_weights = model_args.get("pretrained", None)
         super().__init__()
@@ -45,15 +46,22 @@ class SMPModel(SegmentationModel):
                                encoder_weights=encoder_weights,
                                in_channels=num_channels,
                                classes=num_classes)
+        
 
-    def forward(self, x):
+    def forward(self, x): #override forward function 
         return self.model(x)
 
 
 class UNet(SMPModel):
-    pass
+    def __init__(self,  hyper_params):
 
+        model_args = {'num_classes': 3,
+                      'num_channels': 3,
+                      'encoder': 'resnet18',
+                      'pretrained': 'imagenet'}
 
+        super().__init__(model_args = model_args)
+        
 class UNetPlusPlus(SMPModel):
     pass
 
