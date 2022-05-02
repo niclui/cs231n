@@ -37,19 +37,8 @@ if __name__ == '__main__':
     # Read in the combined df
     combined_df = pd.read_csv(combined_csv_path)
 
+    classes = ['small_bowel', 'large_bowel', 'stomach'] # mask classes
     mask_paths = []
-    # id_list = list(combined_df["id"])
-    # class_list = list(combined_df["class"])
-    # seg_list = list(combined_df["segmentation"])
-    # height_list = list(combined_df["slice_height"])
-    # width_list = list(combined_df["slice_width"])
-
-    # loop through all the ids
-    # for each id, loop through the classes
-    # add together all the class masks
-    
-    # mask classes
-    classes = ['small_bowel', 'large_bowel', 'stomach']
     
     # Decode!
     case_ids = combined_df['id'].unique()
