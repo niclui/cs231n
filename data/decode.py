@@ -11,16 +11,17 @@ import os
 
 # Reference: https://www.kaggle.com/paulorzp/run-length-encode-and-decode
 def rle_decode(mask_rle, shape):
+    height, width = shape
     if mask_rle==mask_rle:
         s = mask_rle.split()
         starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
         starts -= 1
         ends = starts + lengths
-        img = np.zeros(shape[0]*shape[1], dtype=np.uint8)
+        img = np.zeros(height*width, dtype=np.uint8)
         for lo, hi in zip(starts, ends):
             img[lo:hi] = 1
     else: # If segmentation is NaN, just return an array of 0s
-        img = np.zeros(shape[0]*shape[1], dtype=np.uint8)
+        img = np.zeros(height*width, dtype=np.uint8)
     return img.reshape(shape)  # Needed to align to RLE direction
 
 if __name__ == '__main__':
@@ -37,18 +38,44 @@ if __name__ == '__main__':
     combined_df = pd.read_csv(combined_csv_path)
 
     mask_paths = []
-    id_list = list(combined_df["id"])
-    class_list = list(combined_df["class"])
-    seg_list = list(combined_df["segmentation"])
-    height_list = list(combined_df["slice_height"])
-    width_list = list(combined_df["slice_width"])
+    # id_list = list(combined_df["id"])
+    # class_list = list(combined_df["class"])
+    # seg_list = list(combined_df["segmentation"])
+    # height_list = list(combined_df["slice_height"])
+    # width_list = list(combined_df["slice_width"])
 
+    # loop through all the ids
+    # for each id, loop through the classes
+    # add together all the class masks
+    
+    # mask classes
+    classes = ['small_bowel', 'large_bowel', 'stomach']
+    
     # Decode!
-    for i in tqdm(range(len(combined_df))):
-        decoded_mask = rle_decode(seg_list[i], [height_list[i], width_list[i]])
-        mask_path = masks_folder_path + "/" + id_list[i] + "_" + class_list[i] + '.npy'
-        np.save(mask_path, decoded_mask)
+    case_ids = combined_df['id'].unique()
+    combined_df.set_index(['id', 'class'], inplace=True)
+    for case_id in tqdm(case_ids):
+        # make mask for each class and store in dict
+        mask_dict = {}
+        for mask_class in classes:
+                        
+            # identify row in df with relevant info for the case id and class
+            id_class = combined_df.loc[case_id, mask_class]
+            
+            # decode the mask
+            decoded_mask = rle_decode(id_class['segmentation'], (id_class['slice_height'], id_class['slice_width'])) 
+            
+            # store decoded mask in dictionary
+            mask_dict[mask_class] = decoded_mask
+        
+        case_mask = np.stack([mask_dict[c] for c in classes], axis=-1)
+        mask_path = os.path.join(masks_folder_path, case_id + '.npy')
+        np.save(mask_path, case_mask)
         mask_paths.append(mask_path)
-
-    combined_df["mask_path"] = mask_paths
-    combined_df.to_csv(final_csv_path + '.csv')
+        
+    # save csv of mask paths
+    combined_df.reset_index(inplace=True)
+    mask_path_df = combined_df[['case', 'day', 'slice_id', 'image_path', 'pic_info', 'slice_height', 'slice_width', 'pixel_height', 'pixel_width']]
+    mask_path_df.drop_duplicates(inplace=True)
+    mask_path_df['mask_path'] = mask_paths
+    mask_path_df.to_csv(final_csv_path + '.csv')
