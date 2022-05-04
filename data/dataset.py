@@ -9,6 +9,8 @@ from detectron2.data import DatasetMapper
 from util import constants as C
 from .transforms import get_transforms
 
+import pdb
+
 class SegmentationDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, transforms=None, split='train', 
                 augmentation='none', image_size=256, pretrained=False):
@@ -21,13 +23,14 @@ class SegmentationDataset(torch.utils.data.Dataset):
             image_size=image_size,
             pretrained=pretrained
         )
-        
+
     def __len__(self):
         return len(self._df)
 
     def __getitem__(self, index):
-        image = Image.open(self._image_path[index]).convert('RGB')
-        mask = np.load(self._mask_path[index])
+
+        image = Image.open('data/' + self._image_path[index]).convert('RGB')
+        mask = np.load('data/' + self._mask_path[index])
         mask = Image.fromarray(mask)
         if self._transforms is not None:
             image = self._transforms(image)
@@ -36,31 +39,11 @@ class SegmentationDataset(torch.utils.data.Dataset):
         # Because of resizing, some values are not exactly 0 or 1
         # So just map them to 0 or 1
         mask = torch.Tensor(np.where(mask > 0, 1, mask))
-        return image, mask                    
+        return image, mask
 
-class ImageClassificationDataset(torch.utils.data.Dataset):
-    def __init__(self, image_path=None, labels=None, transforms=None):
-        self._image_path = image_path
-        self._labels = labels
-        self._transforms = transforms
-
-    def __len__(self):
-        return len(self._labels)
-
-    def __getitem__(self, index):
-        label = torch.tensor(np.float64(self._labels[index]))
-        image = Image.open(self._image_path[index]).convert('RGB')
-        if self._transforms is not None:
-            image = self._transforms(image)
-
-        return image, label
-
-
-class ImageClassificationDemoDataset(ImageClassificationDataset):
+class SegmentationDemoDataset(SegmentationDataset):
     def __init__(self):
-        super().__init__(image_path=C.TEST_IMG_PATH, labels=[
-            0, 1], transforms=T.Compose([T.Resize((224, 224)), T.ToTensor()]))
-
+        super().__init__(dataset_path=C.TEST_DATASET_PATH)
 
 class ImageDetectionDataset(torch.utils.data.Dataset):
     def __init__(self, image_path=None, annotations=None, augmentations=None):
@@ -82,10 +65,31 @@ class ImageDetectionDataset(torch.utils.data.Dataset):
         sample = self._mapper(sample)
         return sample
 
-
 class ImageDetectionDemoDataset(ImageDetectionDataset):
     def __init__(self):
         super().__init__(image_path=C.TEST_IMG_PATH,
                          annotations=[[{'bbox': [438, 254, 455, 271], 'bbox_mode': 0, 'category_id': 0},
                                        {'bbox': [388, 259, 408, 279], 'bbox_mode': 0, 'category_id': 1}]] * 2,
                          augmentations=[])
+
+class ImageClassificationDataset(torch.utils.data.Dataset):
+    def __init__(self, image_path=None, labels=None, transforms=None):
+        self._image_path = image_path
+        self._labels = labels
+        self._transforms = transforms
+
+    def __len__(self):
+        return len(self._labels)
+
+    def __getitem__(self, index):
+        label = torch.tensor(np.float64(self._labels[index]))
+        image = Image.open(self._image_path[index]).convert('RGB')
+        if self._transforms is not None:
+            image = self._transforms(image)
+
+        return image, label
+
+class ImageClassificationDemoDataset(ImageClassificationDataset):
+    def __init__(self):
+        super().__init__(image_path=C.TEST_IMG_PATH, labels=[
+            0, 1], transforms=T.Compose([T.Resize((224, 224)), T.ToTensor()]))

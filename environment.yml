@@ -17,3 +17,4 @@ dependencies:
     - segmentation_models_pytorch
     - efficientnet_pytorch
     - pretrainedmodels
+    - monai

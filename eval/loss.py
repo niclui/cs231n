@@ -12,5 +12,9 @@ def get_loss_fn(loss_args):
         return torch.nn.BCEWithLogitsLoss()
     elif loss_fn == "CE":
         return torch.nn.CrossEntropyLoss()
+    elif loss_fn == 'DBE':
+        return smp.losses.DiceLoss(mode = 'binary', from_logits = True)
+    elif loss_fn == 'DLE':
+        return smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
     else:
         raise ValueError(f"loss_fn {loss_args.loss_fn} not supported.")
