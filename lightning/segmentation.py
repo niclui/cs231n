@@ -56,7 +56,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.evaluator.reset()
         self.log_dict(metrics, prog_bar=True)
 
-        pdb.set_trace()
+        #pdb.set_trace()
 
     def test_step(self, batch, batch_nb):
         preds = self.model.infer(batch)
