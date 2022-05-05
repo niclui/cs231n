@@ -16,19 +16,18 @@ class SegmentationDataset(torch.utils.data.Dataset):
                 augmentation='none', image_size=256, pretrained=False):
         self._df = pd.read_csv(dataset_path) # Careful of index_col here
         self._image_path = self._df['image_path']
-        self._mask_path = self._df['mask_path']         
+        self._mask_path = self._df['mask_path']      
+        self._pretrained = pretrained   
         self._transforms = get_transforms(
             split=split,
             augmentation=augmentation,
-            image_size=image_size,
-            pretrained=pretrained
+            image_size=image_size
         )
 
     def __len__(self):
         return len(self._df)
 
     def __getitem__(self, index):
-
         image = Image.open('data/' + self._image_path[index]).convert('RGB')
         mask = np.load('data/' + self._mask_path[index])
         mask = Image.fromarray(mask)
@@ -36,9 +35,11 @@ class SegmentationDataset(torch.utils.data.Dataset):
             image = self._transforms(image)
             mask = self._transforms(mask)
         # Simple interpolation for mask
-        # Because of resizing, some values are not exactly 0 or 1
-        # So just map them to 0 or 1
         mask = torch.Tensor(np.where(mask > 0, 1, mask))
+        # If you are using a pretrained model, normalize the image (not mask) using imagenet statistics
+        if self._pretrained:
+            self._normalize_transform = T.Normalize(mean=C.IMAGENET_MEAN, std=C.IMAGENET_STD)
+            image = self._normalize_transform(image)
         return image, mask
 
 class SegmentationDemoDataset(SegmentationDataset):
