@@ -10,7 +10,7 @@ from models import get_model
 from eval import get_loss_fn, SegmentationEvaluator
 from util import constants as C
 from .logger import TFLogger
-from data import SegmentationDemoDataset
+from data import SegmentationDemoDataset, SegmentationDataset
 from torch.nn.functional import softmax
 
 import pdb
@@ -25,6 +25,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.loss = get_loss_fn(params)
         self.dataset_folder = params['dataset_folder']
         self.evaluator = SegmentationEvaluator()
+        self.augmentation = params['augmentation']
 
     def training_step(self, batch, batch_nb): #Batch of data from train dataloader passed here
         images, masks = map(list, zip(*batch))
@@ -72,7 +73,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
     def train_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'),
                                                 split="train",
-                                                augmentation='none',
+                                                augmentation=self.augmentation,
                                                 image_size=256,
                                                 pretrained=True)
         

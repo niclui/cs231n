@@ -28,6 +28,7 @@ def train(dataset_folder="./data_files",
           tb_path="./sandbox/tb",
           loss_fn="BCE",
           weights_summary=None,
+          augmentation = 'none',
           ):
     """
     Run the training experiment.

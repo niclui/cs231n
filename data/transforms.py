@@ -3,7 +3,7 @@ import torchvision.transforms as T
 
 from util.constants import IMAGENET_MEAN, IMAGENET_STD
 
-def get_transforms(split, augmentation, image_size, pretrained):
+def get_transforms(split, augmentation, image_size):
     
     if split != "train":
         augmentation = 'none' # Only do augmentations if its the training dataset
@@ -24,11 +24,11 @@ def get_transforms(split, augmentation, image_size, pretrained):
     augmentation_transform = augmentation_transforms[augmentation] 
     resize_transform = [T.Resize((image_size, image_size))] # Resize to square of specified dimensions
     totensor_transform = [T.ToTensor()] # Convert to tensor
-    normalize_transform = T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD) # Normalize based on image net
+    #normalize_transform = T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD) # Normalize based on image net
 
     transforms_list = augmentation_transform + resize_transform + totensor_transform
-    if pretrained: # Normalized based on ImageNet if we are using a pre-trained model
-        transforms_list.append(normalize_transform) 
+    #if pretrained: # Normalized based on ImageNet if we are using a pre-trained model
+    #    transforms_list.append(normalize_transform) 
         
     transforms = T.Compose(transforms_list)
     return transforms
