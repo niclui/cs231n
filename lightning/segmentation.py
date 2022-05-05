@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+import os
 import torch
 import torchvision.transforms as T
 from torch.utils.data import DataLoader
@@ -22,6 +23,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.save_hyperparameters(params) #Save hyperparameters to experiment directory, pytorch lightning function
         self.model = get_model(params) #Instantiates model from model folder
         self.loss = get_loss_fn(params)
+        self.dataset_folder = params['dataset_folder']
         self.evaluator = SegmentationEvaluator()
 
     def training_step(self, batch, batch_nb): #Batch of data from train dataloader passed here
@@ -68,19 +70,33 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         return [torch.optim.Adam(self.parameters(), lr=0.02)]
 
     def train_dataloader(self): #Called during init
-        dataset = SegmentationDemoDataset() #For specific example
+        dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'),
+                                                split="train",
+                                                augmentation='none',
+                                                image_size=256,
+                                                pretrained=True)
+        
         return DataLoader(dataset, shuffle=True, #For entire batch
-                          batch_size=2, num_workers=8,
+                          batch_size=2, num_workers=0,
                           collate_fn=lambda x: x)
 
     def val_dataloader(self): #Called during init
-        dataset = SegmentationDemoDataset()
+        dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'val_dataset.csv'),
+                                                split="val",
+                                                augmentation='none',
+                                                image_size=256,
+                                                pretrained=True)
 
         return DataLoader(dataset, shuffle=False, #num_workers = 8,
                 batch_size=2, collate_fn=lambda x: x)
 
     def test_dataloader(self): #Called during init
-        dataset = SegmentationDemoDataset()
+        dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'test_dataset.csv'),
+                                                split="test",
+                                                augmentation='none',
+                                                image_size=256,
+                                                pretrained=True)
+        
         return DataLoader(dataset, shuffle=False,
                 batch_size=1, num_workers=8, collate_fn=lambda x: x)
 
