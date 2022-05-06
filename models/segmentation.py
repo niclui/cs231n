@@ -45,7 +45,8 @@ class SMPModel(SegmentationModel):
         self.model = _model_fn(encoder_name=encoder_name,
                                encoder_weights=encoder_weights,
                                in_channels=num_channels,
-                               classes=num_classes)
+                               classes=num_classes, 
+                               decoder_channels = (1024, 512, 256, 128, 64))
         
 
     def forward(self, x): #override forward function 
@@ -57,7 +58,7 @@ class UNet(SMPModel):
 
         model_args = {'num_classes': 3,
                       'num_channels': 3,
-                      'encoder': 'resnet18',
+                      'encoder': 'resnet34',
                       'pretrained': 'imagenet'}
 
         super().__init__(model_args = model_args)

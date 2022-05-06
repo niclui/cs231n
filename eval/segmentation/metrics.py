@@ -36,7 +36,7 @@ def compute_hausdorff(pred, gt, max_dist):
         return 1.0
     return dist / max_dist
 
-def get_metrics(preds, labels, threshold=None):
+def get_metrics(preds, labels):
     if isinstance(labels, torch.Tensor):
         labels_ar = labels.cpu().numpy()
     
@@ -69,3 +69,9 @@ def get_metrics(preds, labels, threshold=None):
         'hausdorff': hausdorff,
         'combined': 0.4 * dice_coeff + 0.6 * hausdorff
     }
+
+if __name__ == '__main__':
+    preds = torch.randint(low = 0, high = 2, size = (10, 3, 256, 256))
+    labels = torch.randint(low = 0, high = 2, size = (10, 3, 256, 256))
+
+    print(get_metrics(preds, labels))

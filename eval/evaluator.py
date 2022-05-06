@@ -48,11 +48,13 @@ class DatasetEvaluator:
 class SegmentationEvaluator(DatasetEvaluator):
     def __init__(self, threshold = 0.5):
         super().__init__()
-        self.preds = None
-        self.truth = None
+        self.preds = []
+        self.truth = []
         self.threshold = threshold
 
     def reset(self):
+        self.preds = []
+        self.truth = []
         return
 
     def process(self, inputs, logits_masks):
@@ -61,12 +63,15 @@ class SegmentationEvaluator(DatasetEvaluator):
         masks = torch.stack(masks)
 
         prob_masks = sigmoid(logits_masks)
-        self.truth = masks
-        self.preds = prob_masks >= self.threshold
+        self.truth.append(masks)
+        self.preds.append(prob_masks >= self.threshold)
         return
 
     def evaluate(self):
-        return segmentation.get_metrics(self.preds, self.truth)
+        self.preds = torch.stack(self.preds)
+        self.truth = torch.stack(self.truth)
+        NB, B, C, H, W = self.preds.shape
+        return segmentation.get_metrics(self.preds.reshape(-1, C, H, W), self.truth.reshape(-1, C, H, W))
 
 class BinaryClassificationEvaluator(
         ignite.metrics.EpochMetric,

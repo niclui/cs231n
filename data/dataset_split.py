@@ -28,7 +28,7 @@ def dataset_split(dataset_path, output_folder, train_prop=70, val_prop=20, test_
     test.to_csv(output_folder + "test_dataset.csv", index=False)
 
 if __name__ == '__main__':
-    # usage: python data/data_split.py [dataset path] [output folder] [train percent] [val percent] [test percent]
+    # usage: python data/dataset_split.py [dataset path] [output folder] [train percent] [val percent] [test percent]
     dataset_path = sys.argv[1]
     output_folder = sys.argv[2]
     train_prop = int(sys.argv[3]) / 100

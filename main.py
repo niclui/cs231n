@@ -10,7 +10,7 @@ from lightning import (get_task,
                        get_logger)
 
 
-def train(dataset_folder="./data_files",
+def train(dataset_folder="./data_files_test",
           save_dir="./sandbox",
           exp_name="DemoExperiment",
           model="ResNet18",
