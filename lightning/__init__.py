@@ -19,6 +19,8 @@ def load_task(ckpt_path, **kwargs):
     args = torch.load(ckpt_path, map_location='cpu')['hyper_parameters']
     if args.get("task", "classification") == "classification":
         task = ClassificationTask
+    elif args.get("task") == "segmentation":
+        task = SegmentationTask
     else:
         task = DetectionTask
     return task.load_from_checkpoint(ckpt_path)

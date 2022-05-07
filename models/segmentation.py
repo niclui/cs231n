@@ -45,8 +45,8 @@ class SMPModel(SegmentationModel):
         self.model = _model_fn(encoder_name=encoder_name,
                                encoder_weights=encoder_weights,
                                in_channels=num_channels,
-                               classes=num_classes, 
-                               decoder_channels = (1024, 512, 256, 128, 64))
+                               classes=num_classes) 
+                               #decoder_channels = (1024, 512, 256, 128, 64))
         
 
     def forward(self, x): #override forward function 

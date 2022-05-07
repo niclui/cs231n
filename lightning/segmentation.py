@@ -57,8 +57,15 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.log_dict(metrics, prog_bar=True)
 
     def test_step(self, batch, batch_nb):
-        preds = self.model.infer(batch)
-        self.evaluator.process(batch, preds)
+
+        images, masks = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        logits_masks = self.model.forward(images)
+        loss = self.loss(logits_masks, masks)
+
+        self.evaluator.process(batch, logits_masks)
 
     def test_epoch_end(self, outputs):
         metrics = self.evaluator.evaluate()
@@ -97,7 +104,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         
         return DataLoader(dataset, shuffle=False,
-                batch_size=1, num_workers=8, collate_fn=lambda x: x)
+                batch_size=1, num_workers=0, collate_fn=lambda x: x)
 
     #Process
     #1. Call Trainer.fit

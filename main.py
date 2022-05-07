@@ -76,7 +76,7 @@ def train(dataset_folder="./data_files",
 
 
 def test(ckpt_path,
-         gpus=4,
+         gpus=0,
          **kwargs):
     """
     Run the testing experiment.
