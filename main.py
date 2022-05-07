@@ -31,7 +31,9 @@ def train(dataset_folder="./data_files",
           loss_fn="BCE",
           weights_summary=None,
           augmentation = 'none',
-          num_workers=0
+          num_workers=0,
+          lr = 0.001,
+          batch_size = 2
           ):
     """
     Run the training experiment.
@@ -96,15 +98,16 @@ def test(ckpt_path,
     trainer = Trainer(gpus=gpus)
     trainer.test(task)
 
-def predict(ckpt_path, gpus=1, prediction_path="predictions.npy", **kwargs):
+def predict(ckpt_path, gpus=1, prediction_path="predictions.pt", **kwargs):
     # couldn't figure out how to pass in a specific dataset as an argument
     # by default, this makes predictions over the test dataset
     # can change the prediction dataset in predict_dataloader() function in segmentation.py
     task = load_task(ckpt_path, **kwargs)
     trainer = Trainer(gpus=gpus)
     trainer.predict(task)
-    predictions = np.array(task.evaluator.preds)
-    np.save(prediction_path, predictions)
+    preds_tensor = task.evaluator.preds
+    preds = preds_tensor.cpu().detach()
+    torch.save(prediction_path, predictions)
 
 if __name__ == "__main__":
     fire.Fire() #Allows you to run functions and supply arguments directly in command line

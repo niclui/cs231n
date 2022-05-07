@@ -27,6 +27,8 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.evaluator = SegmentationEvaluator()
         self.augmentation = params['augmentation']
         self.n_workers = params['num_workers']
+        self.lr = params['lr']
+        self.batch_size = params['batch_size']
 
     def training_step(self, batch, batch_nb): #Batch of data from train dataloader passed here
         images, masks = map(list, zip(*batch))
@@ -82,7 +84,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.evaluator.process(batch, logits_masks)
 
     def configure_optimizers(self):
-        return [torch.optim.Adam(self.parameters(), lr=0.01)]
+        return [torch.optim.Adam(self.parameters(), lr=self.lr)]
 
     def train_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'),
@@ -92,7 +94,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         
         return DataLoader(dataset, shuffle=True, #For entire batch
-                          batch_size=2, num_workers=self.n_workers,
+                          batch_size=self.batch_size, num_workers=self.n_workers,
                           collate_fn=lambda x: x)
 
     def val_dataloader(self): #Called during init
@@ -103,7 +105,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
 
         return DataLoader(dataset, shuffle=False, num_workers = self.n_workers,
-                batch_size=2, collate_fn=lambda x: x)
+                batch_size=self.batch_size, collate_fn=lambda x: x)
 
     def test_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'test_dataset.csv'),
