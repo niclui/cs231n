@@ -82,7 +82,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.evaluator.process(batch, logits_masks)
 
     def configure_optimizers(self):
-        return [torch.optim.Adam(self.parameters(), lr=0.02)]
+        return [torch.optim.Adam(self.parameters(), lr=0.01)]
 
     def train_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'),
