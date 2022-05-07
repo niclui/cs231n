@@ -57,13 +57,28 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.log_dict(metrics, prog_bar=True)
 
     def test_step(self, batch, batch_nb):
-        preds = self.model.infer(batch)
-        self.evaluator.process(batch, preds)
+        images, masks = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        logits_masks = self.model.forward(images)
+        loss = self.loss(logits_masks, masks)
+
+        self.evaluator.process(batch, logits_masks)
 
     def test_epoch_end(self, outputs):
         metrics = self.evaluator.evaluate()
         self.log_dict(metrics)
         return metrics
+
+    def predict_step(self, batch, batch_idx):
+        images, masks = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        logits_masks = self.model.forward(images)
+
+        self.evaluator.process(batch, logits_masks)
 
     def configure_optimizers(self):
         return [torch.optim.Adam(self.parameters(), lr=0.02)]
@@ -76,7 +91,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         
         return DataLoader(dataset, shuffle=True, #For entire batch
-                          batch_size=2, num_workers=0,
+                          batch_size=2, num_workers=4,
                           collate_fn=lambda x: x)
 
     def val_dataloader(self): #Called during init
@@ -86,7 +101,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 image_size=256,
                                                 pretrained=True)
 
-        return DataLoader(dataset, shuffle=False, #num_workers = 8,
+        return DataLoader(dataset, shuffle=False, num_workers = 4,
                 batch_size=2, collate_fn=lambda x: x)
 
     def test_dataloader(self): #Called during init
@@ -97,7 +112,16 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         
         return DataLoader(dataset, shuffle=False,
-                batch_size=1, num_workers=8, collate_fn=lambda x: x)
+                batch_size=1, num_workers=4, collate_fn=lambda x: x)
+
+    def predict_dataloader(self): #Called during init
+        dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'test_dataset.csv'),
+                                                split="test",
+                                                augmentation='none',
+                                                image_size=256,
+                                                pretrained=True)
+        return DataLoader(dataset, shuffle=False,
+                batch_size=1, num_workers=4, collate_fn=lambda x: x)
 
     #Process
     #1. Call Trainer.fit
