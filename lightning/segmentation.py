@@ -26,6 +26,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.dataset_folder = params['dataset_folder']
         self.evaluator = SegmentationEvaluator()
         self.augmentation = params['augmentation']
+        self.n_workers = params['num_workers']
 
     def training_step(self, batch, batch_nb): #Batch of data from train dataloader passed here
         images, masks = map(list, zip(*batch))
@@ -57,7 +58,10 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.log_dict(metrics, prog_bar=True)
 
     def test_step(self, batch, batch_nb):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 85eb3ab337959ee9c2a498c8cd4052b4e6f11821
         images, masks = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
@@ -72,6 +76,15 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.log_dict(metrics)
         return metrics
 
+    def predict_step(self, batch, batch_idx):
+        images, masks = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        logits_masks = self.model.forward(images)
+
+        self.evaluator.process(batch, logits_masks)
+
     def configure_optimizers(self):
         return [torch.optim.Adam(self.parameters(), lr=0.02)]
 
@@ -83,7 +96,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         
         return DataLoader(dataset, shuffle=True, #For entire batch
-                          batch_size=2, num_workers=0,
+                          batch_size=2, num_workers=self.n_workers,
                           collate_fn=lambda x: x)
 
     def val_dataloader(self): #Called during init
@@ -93,7 +106,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 image_size=256,
                                                 pretrained=True)
 
-        return DataLoader(dataset, shuffle=False, #num_workers = 8,
+        return DataLoader(dataset, shuffle=False, num_workers = self.n_workers,
                 batch_size=2, collate_fn=lambda x: x)
 
     def test_dataloader(self): #Called during init
@@ -104,7 +117,20 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         
         return DataLoader(dataset, shuffle=False,
+<<<<<<< HEAD
                 batch_size=1, num_workers=0, collate_fn=lambda x: x)
+=======
+                batch_size=1, num_workers=self.n_workers, collate_fn=lambda x: x)
+
+    def predict_dataloader(self): #Called during init
+        dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'test_dataset.csv'),
+                                                split="test",
+                                                augmentation='none',
+                                                image_size=256,
+                                                pretrained=True)
+        return DataLoader(dataset, shuffle=False,
+                batch_size=1, num_workers=self.n_workers, collate_fn=lambda x: x)
+>>>>>>> 85eb3ab337959ee9c2a498c8cd4052b4e6f11821
 
     #Process
     #1. Call Trainer.fit
