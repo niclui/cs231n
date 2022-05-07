@@ -1,6 +1,8 @@
 import os
 import fire
 from pytorch_lightning import Trainer
+import numpy as np
+import pdb
 
 from util import init_exp_folder, Args
 from lightning import (get_task,
@@ -10,7 +12,7 @@ from lightning import (get_task,
                        get_logger)
 
 
-def train(dataset_folder="./data_files",
+def train(dataset_folder="data/data_files",
           save_dir="./sandbox",
           exp_name="DemoExperiment",
           model="ResNet18",
@@ -93,6 +95,15 @@ def test(ckpt_path,
     trainer = Trainer(gpus=gpus)
     trainer.test(task)
 
+def predict(ckpt_path, gpus=1, prediction_path="predictions.npy", **kwargs):
+    # couldn't figure out how to pass in a specific dataset as an argument
+    # by default, this makes predictions over the test dataset
+    # can change the prediction dataset in predict_dataloader() function in segmentation.py
+    task = load_task(ckpt_path, **kwargs)
+    trainer = Trainer(gpus=gpus)
+    trainer.predict(task)
+    predictions = np.array(task.evaluator.preds)
+    np.save(prediction_path, predictions)
 
 if __name__ == "__main__":
     fire.Fire() #Allows you to run functions and supply arguments directly in command line
