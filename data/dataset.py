@@ -30,7 +30,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         image = Image.open(self._image_path[index]).convert('RGB') # Careful of this path
         mask = np.load(self._mask_path[index])
-        mask = Image.fromarray(mask)
+        #print(mask.shape)
+        mask = Image.fromarray(mask, mode="CMYK")
         if self._transforms is not None:
             image = self._transforms(image)
             mask = self._transforms(mask)

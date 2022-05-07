@@ -56,7 +56,7 @@ class SMPModel(SegmentationModel):
 class UNet(SMPModel):
     def __init__(self,  hyper_params):
 
-        model_args = {'num_classes': 3,
+        model_args = {'num_classes': 4,
                       'num_channels': 3,
                       'encoder': 'resnet34',
                       'pretrained': 'imagenet'}

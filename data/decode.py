@@ -8,6 +8,7 @@ tqdm.pandas()
 from PIL import Image
 import sys
 import os
+import shutil
 
 # Reference: https://www.kaggle.com/paulorzp/run-length-encode-and-decode
 def rle_decode(mask_rle, shape):
@@ -33,6 +34,10 @@ if __name__ == '__main__':
     # Make masks folder path if it doesn't already exist
     if not os.path.exists(masks_folder_path):
         os.mkdir(masks_folder_path)
+    # If masks folder already exists, clear it and regenerate masks
+    else:
+        shutil.rmtree(masks_folder_path)
+        os.mkdir(masks_folder_path)
 
     # Read in the combined df
     combined_df = pd.read_csv(combined_csv_path)
@@ -53,11 +58,22 @@ if __name__ == '__main__':
             
             # decode the mask
             decoded_mask = rle_decode(id_class['segmentation'], (id_class['slice_height'], id_class['slice_width'])) 
+            # print(decoded_mask.shape)
             
             # store decoded mask in dictionary
             mask_dict[mask_class] = decoded_mask
-        
-        case_mask = np.stack([mask_dict[c] for c in classes], axis=-1)
+
+        # Make a very simple mask layer for background
+        background = np.ones((id_class['slice_height'], id_class['slice_width']), dtype=np.uint8) # This creates an array of 1s
+        for mask_class in classes:
+            background -= mask_dict[mask_class] # Minus off all the arrays for the other classes
+        # Finally everything that is no longer 1 is mapped to 0
+        background = np.where(background < 1, 0, 1)
+        # print(background.shape)
+        mask_dict['background'] = background
+ 
+        case_mask = np.stack([mask_dict[c] for c in list(mask_dict.keys())], axis=-1)
+        # print(case_mask.shape)
         mask_path = os.path.join(masks_folder_path, case_id + '.npy')
         np.save(mask_path, case_mask)
         mask_paths.append(mask_path)
