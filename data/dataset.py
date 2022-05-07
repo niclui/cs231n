@@ -4,7 +4,7 @@ import torch
 from PIL import Image
 import torchvision.transforms as T
 import torch.nn as nn
-from detectron2.data import DatasetMapper
+#from detectron2.data import DatasetMapper
 
 from util import constants as C
 from .transforms import get_transforms
@@ -28,8 +28,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         return len(self._df)
 
     def __getitem__(self, index):
-        image = Image.open('data/' + self._image_path[index]).convert('RGB')
-        mask = np.load('data/' + self._mask_path[index])
+        image = Image.open(self._image_path[index]).convert('RGB') # Careful of this path
+        mask = np.load(self._mask_path[index])
         mask = Image.fromarray(mask)
         if self._transforms is not None:
             image = self._transforms(image)

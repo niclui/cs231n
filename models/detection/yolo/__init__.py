@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from detectron2.structures import Instances, Boxes
+#from detectron2.structures import Instances, Boxes
 
 from .backbone import Darknet
 from .utils import (xy_to_cxcy,
