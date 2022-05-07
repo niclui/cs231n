@@ -117,9 +117,6 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         
         return DataLoader(dataset, shuffle=False,
-<<<<<<< HEAD
-                batch_size=1, num_workers=0, collate_fn=lambda x: x)
-=======
                 batch_size=1, num_workers=self.n_workers, collate_fn=lambda x: x)
 
     def predict_dataloader(self): #Called during init
@@ -130,7 +127,6 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         return DataLoader(dataset, shuffle=False,
                 batch_size=1, num_workers=self.n_workers, collate_fn=lambda x: x)
->>>>>>> 85eb3ab337959ee9c2a498c8cd4052b4e6f11821
 
     #Process
     #1. Call Trainer.fit

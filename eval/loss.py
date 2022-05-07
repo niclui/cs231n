@@ -15,6 +15,6 @@ def get_loss_fn(loss_args):
     elif loss_fn == 'DBE':
         return smp.losses.DiceLoss(mode = 'binary', from_logits = True)
     elif loss_fn == 'DLE':
-        return 0.4 * smp.losses.DiceLoss(mode = 'multilabel', from_logits = True) + 0.6 * smp.losses.SoftBCEWithLogitsLoss()
+        return smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
     else:
         raise ValueError(f"loss_fn {loss_args.loss_fn} not supported.")
