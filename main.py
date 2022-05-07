@@ -12,7 +12,7 @@ from lightning import (get_task,
                        get_logger)
 
 
-def train(dataset_folder="data/data_files",
+def train(dataset_folder="./data_files",
           save_dir="./sandbox",
           exp_name="DemoExperiment",
           model="ResNet18",
@@ -31,6 +31,7 @@ def train(dataset_folder="data/data_files",
           loss_fn="BCE",
           weights_summary=None,
           augmentation = 'none',
+          num_workers=0
           ):
     """
     Run the training experiment.
