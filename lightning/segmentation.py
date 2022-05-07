@@ -58,10 +58,6 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.log_dict(metrics, prog_bar=True)
 
     def test_step(self, batch, batch_nb):
-<<<<<<< HEAD
-
-=======
->>>>>>> 85eb3ab337959ee9c2a498c8cd4052b4e6f11821
         images, masks = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
