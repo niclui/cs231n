@@ -68,10 +68,9 @@ class SegmentationEvaluator(DatasetEvaluator):
         return
 
     def evaluate(self):
-        self.preds = torch.stack(self.preds)
-        self.truth = torch.stack(self.truth)
-        NB, B, C, H, W = self.preds.shape
-        return segmentation.get_metrics(self.preds.reshape(-1, C, H, W), self.truth.reshape(-1, C, H, W))
+        self.preds = torch.cat(self.preds, dim=0)
+        self.truth = torch.cat(self.truth, dim=0)
+        return segmentation.get_metrics(self.preds, self.truth)
 
 class BinaryClassificationEvaluator(
         ignite.metrics.EpochMetric,
