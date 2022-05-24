@@ -155,7 +155,6 @@ class SMPModel(SegmentationModel):
 
 class UNet(SMPModel):
     def __init__(self,  hyper_params):
-
         model_args = {'num_classes': 3,
                       'num_channels': 3,
                       'encoder': 'resnet50',
@@ -166,13 +165,17 @@ class UNet(SMPModel):
 class UNetPlusPlus(SMPModel):
     pass
 
-
 class Linknet(SMPModel):
     pass
 
-
 class DeepLabV3(SMPModel):
-    pass
+    def __init__(self,  hyper_params):
+        model_args = {'num_classes': 3,
+                        'num_channels': 3,
+                        'encoder': 'resnet50',
+                        'pretrained': 'imagenet'}
+
+        super().__init__(model_args = model_args)
 
 
 class DeepLabV3Plus(SMPModel):

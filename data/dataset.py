@@ -14,12 +14,13 @@ import cv2
 
 class SegmentationDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, transforms=None, split='train', 
-                augmentation='none', image_size=224, pretrained=False):
+                augmentation=None, image_size=224, pretrained=False):
         self._df = pd.read_csv(dataset_path)
         #self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
         self._image_path = self._df['image_path']
         self._mask_path = self._df['mask_path']      
-        self._pretrained = pretrained   
+        self._pretrained = pretrained
+        self.augmentation = augmentation
         self._transforms = get_transforms(
             split=split,
             augmentation=augmentation,
@@ -31,7 +32,6 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
 
-        #image = Image.open(self._image_path[index]).convert('RGB')
         image = cv2.imread(self._image_path[index], cv2.IMREAD_UNCHANGED)
         image = (image - image.min())/(image.max() - image.min())*255.0 
         image = cv2.resize(image, (C.IMAGE_SIZE, C.IMAGE_SIZE))
@@ -40,10 +40,14 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
         mask = np.load(self._mask_path[index])
 
-        mask = mask.transpose(2, 0, 1)
-        image = image.transpose(2, 0, 1)
+        mask = torch.tensor(mask.transpose(2, 0, 1), dtype = torch.float32)
+        image = torch.tensor(image.transpose(2, 0, 1), dtype = torch.float32)
+
+        if self.augmentation != 'none':
+            image = self._transforms(image)
+            mask = self._transforms(mask)
         
-        return torch.tensor(image, dtype = torch.float32), torch.tensor(mask, dtype = torch.float32)
+        return image, mask
 
 class SegmentationDemoDataset(SegmentationDataset):
     def __init__(self):

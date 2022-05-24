@@ -52,30 +52,47 @@ def get_metrics(preds, labels):
     #hausdorff = 0.0
     dice_coeff = 0.0
     num_obs = 0.0
+    small_bowel_dc = 0.0
+    large_bowel_dc = 0.0
+    stomach_dc = 0.0
 
     for i1 in range(N1):
         N2, C, H, W = labels[i1].shape
         for i2 in range(N2):
             #hs = 0.0
             dc = 0.0
+
             for c in range (C):
                 #hs += compute_hausdorff(preds[i1][i2, c], labels[i1][i2, c], max_dist)
-                dc += compute_dice(preds[i1][i2, c].cpu(), labels[i1][i2, c].cpu())
+                to_add = compute_dice(preds[i1][i2, c].cpu(), labels[i1][i2, c].cpu())
+                dc += to_add
+                small_bowel_dc += to_add*(c == 0)
+                large_bowel_dc += to_add*(c == 1)
+                stomach_dc += to_add*(c == 2)
+                    
             #hausdorff += hs/C
             dice_coeff += dc/C
             num_obs += 1
 
     #hausdorff = hausdorff / N
-    dice_coeff = dice_coeff / num_obs
+    dice_coeff /= num_obs
+    small_bowel_dc /= num_obs
+    large_bowel_dc /= num_obs
+    stomach_dc /= num_obs
     
     return {
-        'dice': dice_coeff
+        'dice': dice_coeff,
+        'small_bowel': small_bowel_dc,
+        'large_bowel': large_bowel_dc,
+        'stomach': stomach_dc
         #'hausdorff': hausdorff,
         #'combined': 0.4 * dice_coeff + 0.6 * hausdorff
     }
 
 if __name__ == '__main__':
-    preds = torch.randint(low = 0, high = 2, size = (10, 3, 256, 256))
-    labels = torch.randint(low = 0, high = 2, size = (10, 3, 256, 256))
+
+    #Checking dice function
+    preds = [torch.randint(low = 0, high = 2, size = (32, 3, 256, 256)) for i in range(20)]
+    labels = [torch.randint(low = 0, high = 2, size = (32, 3, 256, 256)) for i in range(20)]
 
     print(get_metrics(preds, labels))
