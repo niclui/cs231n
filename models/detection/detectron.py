@@ -2,12 +2,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from detectron2.config import get_cfg
-from detectron2 import model_zoo
-from detectron2.modeling import build_model
-from detectron2.utils.events import EventStorage
-from detectron2.structures import Instances, Boxes
-from detectron2.checkpoint import DetectionCheckpointer
+#from detectron2.config import get_cfg
+#from detectron2 import model_zoo
+#from detectron2.modeling import build_model
+#from detectron2.utils.events import EventStorage
+#from detectron2.structures import Instances, Boxes
+#from detectron2.checkpoint import DetectionCheckpointer
 
 
 class Detectron2Model(nn.Module):

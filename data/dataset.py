@@ -4,7 +4,7 @@ import torch
 from PIL import Image
 import torchvision.transforms as T
 import torch.nn as nn
-from detectron2.data import DatasetMapper
+# from detectron2.data import DatasetMapper
 
 from util import constants as C
 from .transforms import get_transforms
