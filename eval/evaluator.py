@@ -63,13 +63,11 @@ class SegmentationEvaluator(DatasetEvaluator):
         masks = torch.stack(masks)
 
         prob_masks = sigmoid(logits_masks)
-        self.truth.append(masks)
+        self.truth.append(masks.detach())
         self.preds.append(prob_masks >= self.threshold)
         return
 
     def evaluate(self):
-        self.preds = torch.cat(self.preds, dim=0)
-        self.truth = torch.cat(self.truth, dim=0)
         return segmentation.get_metrics(self.preds, self.truth)
 
 class BinaryClassificationEvaluator(

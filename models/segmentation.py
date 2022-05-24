@@ -153,13 +153,12 @@ class SMPModel(SegmentationModel):
         x = self.model(x)
         return x
 
-
 class UNet(SMPModel):
     def __init__(self,  hyper_params):
 
         model_args = {'num_classes': 3,
                       'num_channels': 3,
-                      'encoder': 'resnet34',
+                      'encoder': 'resnet50',
                       'pretrained': 'imagenet'}
 
         super().__init__(model_args = model_args)

@@ -13,6 +13,10 @@ from .logger import TFLogger
 from data import SegmentationDemoDataset, SegmentationDataset
 from torch.nn.functional import softmax
 
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+import cv2
+
 import pdb
 
 class SegmentationTask(pl.LightningModule, TFLogger):
@@ -30,10 +34,58 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.lr = params['lr']
         self.batch_size = params['batch_size']
 
+        self.data_transforms = {
+            "train": A.Compose([
+                A.Resize(*CFG.img_size, interpolation=cv2.INTER_NEAREST),
+                A.HorizontalFlip(),
+                A.VerticalFlip(),
+                A.OneOf([
+                    A.RandomContrast(),
+                    A.RandomGamma(),
+                    A.RandomBrightness(),
+                    ], p=0.2),
+                ], p=1.0),
+            "valid": A.Compose([
+                A.Resize(*(C.IMAGE_SIZE, C.IMAGE_SIZE), interpolation=cv2.INTER_NEAREST),
+                ], p=1.0)
+        }
+
+#DEBUGGING STEPS - DISPLAY IMAGES########################################
+
+    def show_img(self, img, mask=None):
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        plt.imshow(img, cmap='bone')
+        
+        if mask is not None:
+            plt.imshow(mask, alpha=0.5)
+            handles = [Rectangle((0,0),1,1, color=_c) for _c in [(0.667,0.0,0.0), (0.0,0.667,0.0), (0.0,0.0,0.667)]]
+            labels = ["Large Bowel", "Small Bowel", "Stomach"]
+            plt.legend(handles,labels)
+        plt.axis('off')
+
+    def plot_batch(self, imgs, msks, batch_idx, size=3):
+        plt.figure(figsize=(5*5, 5))
+        for idx in range(size):
+            plt.subplot(1, 5, idx+1)
+            img = imgs[idx,].permute((1, 2, 0)).cpu().numpy()*255.0
+            img = img.astype('uint8')
+            msk = msks[idx,].permute((1, 2, 0)).cpu().numpy()*255.0
+            self.show_img(img, msk)
+        plt.tight_layout()
+        #plt.show()
+
+        plt.savefig( './images/masks_'+ str(batch_idx) + '.png', bbox_inches='tight')
+
+########################################################################
+
     def training_step(self, batch, batch_idx): #Batch of data from train dataloader passed here
+
         images, masks = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
+
+        #Display images
+        #self.plot_batch(images, masks, batch_idx, 5)
 
         logits_masks = self.model(images)
         loss = self.loss(logits_masks, masks)
@@ -87,7 +139,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=2e-3)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,T_max=50, eta_min=1e-6)
-        return [optimizer], [scheduler]
+        return [optimizer]
 
     def train_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'),
@@ -95,7 +147,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 augmentation=self.augmentation,
                                                 image_size=224,
                                                 pretrained=True)
-        
+
         return DataLoader(dataset, shuffle=True, #For entire batch
                           batch_size=self.batch_size, num_workers=self.n_workers,
                           collate_fn=lambda x: x)
@@ -103,17 +155,17 @@ class SegmentationTask(pl.LightningModule, TFLogger):
     def val_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'val_dataset.csv'),
                                                 split="val",
-                                                augmentation='none',
+                                                augmentation=self.augmentation,
                                                 image_size=224,
                                                 pretrained=True)
 
         return DataLoader(dataset, shuffle=False, num_workers = self.n_workers,
-                batch_size=self.batch_size, collate_fn=lambda x: x)
+                batch_size=2, collate_fn=lambda x: x)
 
     def test_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'test_dataset.csv'),
                                                 split="test",
-                                                augmentation='none',
+                                                augmentation=self.augmentation,
                                                 image_size=224,
                                                 pretrained=True)
         

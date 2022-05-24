@@ -38,36 +38,40 @@ def compute_hausdorff(pred, gt, max_dist):
 
 def get_metrics(preds, labels):
     if isinstance(labels, torch.Tensor):
-        labels_ar = labels.cpu().numpy()
+        labels = labels.cpu().numpy()
     
     if isinstance(preds, torch.Tensor):
-        preds_ar = preds.cpu().numpy()
+        preds = preds.cpu().numpy()
 
-    N, C, H, W = labels.shape
-    
+    N1 = len(labels)
+
     #dice_coeff_mat = compute_meandice(preds, labels)
     #dice_coeff = torch.mean(torch.mean(dice_coeff_mat, dim = 1)).item()
 
-    max_dist = np.sqrt(H**2 + W**2)
-    hausdorff = 0.0
+    #max_dist = np.sqrt(H**2 + W**2)
+    #hausdorff = 0.0
     dice_coeff = 0.0
+    num_obs = 0.0
 
-    for i in range(N):
-        hs = 0.0
-        dc = 0.0
-        for c in range (C):
-            hs += compute_hausdorff(preds_ar[i, c], labels_ar[i, c], max_dist)
-            dc += compute_dice(preds_ar[i, c], labels_ar[i, c])
-        hausdorff += hs/C
-        dice_coeff += dc/C
+    for i1 in range(N1):
+        N2, C, H, W = labels[i1].shape
+        for i2 in range(N2):
+            #hs = 0.0
+            dc = 0.0
+            for c in range (C):
+                #hs += compute_hausdorff(preds[i1][i2, c], labels[i1][i2, c], max_dist)
+                dc += compute_dice(preds[i1][i2, c].cpu(), labels[i1][i2, c].cpu())
+            #hausdorff += hs/C
+            dice_coeff += dc/C
+            num_obs += 1
 
-    hausdorff = hausdorff / N
-    dice_coeff = dice_coeff / N
+    #hausdorff = hausdorff / N
+    dice_coeff = dice_coeff / num_obs
     
     return {
-        'dice': dice_coeff,
-        'hausdorff': hausdorff,
-        'combined': 0.4 * dice_coeff + 0.6 * hausdorff
+        'dice': dice_coeff
+        #'hausdorff': hausdorff,
+        #'combined': 0.4 * dice_coeff + 0.6 * hausdorff
     }
 
 if __name__ == '__main__':

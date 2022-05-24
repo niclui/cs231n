@@ -16,3 +16,4 @@ torchaudio
 jupyterlab
 notebook
 matplotlib
+portalocker

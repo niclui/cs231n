@@ -16,7 +16,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, transforms=None, split='train', 
                 augmentation='none', image_size=224, pretrained=False):
         self._df = pd.read_csv(dataset_path)
-        self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
+        #self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
         self._image_path = self._df['image_path']
         self._mask_path = self._df['mask_path']      
         self._pretrained = pretrained   
@@ -30,24 +30,20 @@ class SegmentationDataset(torch.utils.data.Dataset):
         return len(self._df)
 
     def __getitem__(self, index):
-        image = Image.open(self._image_path[index]).convert('RGB')
+
+        #image = Image.open(self._image_path[index]).convert('RGB')
+        image = cv2.imread(self._image_path[index], cv2.IMREAD_UNCHANGED)
+        image = (image - image.min())/(image.max() - image.min())*255.0 
+        image = cv2.resize(image, (C.IMAGE_SIZE, C.IMAGE_SIZE))
+        image = np.tile(image[...,None], [1, 1, 3])
+        image = image.astype(np.float32) /255.
 
         mask = np.load(self._mask_path[index])
 
-        mask = Image.fromarray(mask)
-
-        if self._transforms is not None:
-            image = self._transforms(image)
-            mask = self._transforms(mask)
-
-        # Simple interpolation for mask
-        #mask = torch.Tensor(np.where(mask > 0, 1, mask))
-        # If you are using a pretrained model, normalize the image (not mask) using imagenet statistics
-        if self._pretrained:
-            self._normalize_transform = T.Normalize(mean=C.IMAGENET_MEAN, std=C.IMAGENET_STD)
-            image = self._normalize_transform(image)
+        mask = mask.transpose(2, 0, 1)
+        image = image.transpose(2, 0, 1)
         
-        return image, mask
+        return torch.tensor(image, dtype = torch.float32), torch.tensor(mask, dtype = torch.float32)
 
 class SegmentationDemoDataset(SegmentationDataset):
     def __init__(self):
