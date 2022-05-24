@@ -71,8 +71,8 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         #Display images
         #self.plot_batch(images, masks, batch_idx, 5)
 
-        logits_masks = self.model(images)
-        loss = self.loss(logits_masks, masks)
+        logits_masks, clearn_out = self.model(images)
+        loss = self.loss(logits_masks, masks, clearn_out)
         self.log("loss", loss)
 
         return loss
@@ -83,8 +83,8 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         images = torch.stack(images)
         masks = torch.stack(masks)
 
-        logits_masks = self.model(images)
-        loss = self.loss(logits_masks, masks)
+        logits_masks, clearn_out = self.model(images)
+        loss = self.loss(logits_masks, masks, clearn_out)
 
         self.evaluator.process(batch, logits_masks)
         return loss
@@ -144,7 +144,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
 
         return DataLoader(dataset, shuffle=False, num_workers = self.n_workers,
-                batch_size=2, collate_fn=lambda x: x)
+                batch_size=4, collate_fn=lambda x: x)
 
     def test_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'test_dataset.csv'),
