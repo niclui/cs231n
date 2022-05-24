@@ -34,22 +34,6 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.lr = params['lr']
         self.batch_size = params['batch_size']
 
-        self.data_transforms = {
-            "train": A.Compose([
-                A.Resize(*CFG.img_size, interpolation=cv2.INTER_NEAREST),
-                A.HorizontalFlip(),
-                A.VerticalFlip(),
-                A.OneOf([
-                    A.RandomContrast(),
-                    A.RandomGamma(),
-                    A.RandomBrightness(),
-                    ], p=0.2),
-                ], p=1.0),
-            "valid": A.Compose([
-                A.Resize(*(C.IMAGE_SIZE, C.IMAGE_SIZE), interpolation=cv2.INTER_NEAREST),
-                ], p=1.0)
-        }
-
 #DEBUGGING STEPS - DISPLAY IMAGES########################################
 
     def show_img(self, img, mask=None):
@@ -139,7 +123,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=2e-3)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,T_max=50, eta_min=1e-6)
-        return [optimizer]
+        return [optimizer], [scheduler]
 
     def train_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'),

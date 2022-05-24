@@ -3,7 +3,28 @@ import torchvision.transforms as T
 
 from util.constants import IMAGENET_MEAN, IMAGENET_STD
 
+import albumentations as A
+import cv2
+
 def get_transforms(split, augmentation, image_size):
+
+    IMAGE_SIZE = (224, 224)
+
+    data_transforms = {
+            "train": A.Compose([
+                A.Resize(*IMAGE_SIZE, interpolation=cv2.INTER_NEAREST),
+                A.HorizontalFlip(),
+                A.VerticalFlip(),
+                A.OneOf([
+                    A.RandomContrast(),
+                    A.RandomGamma(),
+                    A.RandomBrightness(),
+                    ], p=0.2),
+                ], p=1.0),
+            "valid": A.Compose([
+                A.Resize(*IMAGE_SIZE, interpolation=cv2.INTER_NEAREST),
+                ], p=1.0)
+        }
     
     if split != "train":
         augmentation = 'none' # Only do augmentations if its the training dataset

@@ -77,7 +77,6 @@ def train(dataset_folder="./data_files",
                       weights_summary=weights_summary,
                       stochastic_weight_avg=stochastic_weight_avg,
                       max_epochs=max_epochs,
-                      auto_lr_find = True,
                       reload_dataloaders_every_n_epochs=1,
                       log_every_n_steps=1) #Handles functionality of training
     trainer.fit(task)
