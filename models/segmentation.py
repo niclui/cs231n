@@ -97,7 +97,7 @@ class CLUNet(nn.Module):
         self.enc4 = Down(8 * n_channels, 16 * n_channels)
         self.enc5 = Down(16 * n_channels, 16 * n_channels)
 
-        #self.clearn = CLearn(16 * n_channels, n_channels, feature_dim = 128)
+        self.clearn = CLearn(16 * n_channels, n_channels, feature_dim = 128)
         
         self.dec1 = Up(32 * n_channels, 8 * n_channels)
         self.dec2 = Up(16 * n_channels, 4 * n_channels)
@@ -106,7 +106,7 @@ class CLUNet(nn.Module):
         self.dec5 = Up(2 * n_channels, n_channels)
         self.out = Out(n_channels, n_classes)
 
-    def forward(self, x):
+    def forward(self, x, train = False):
         x1 = self.conv(x)
         x2 = self.enc1(x1)
         x3 = self.enc2(x2)
@@ -114,7 +114,8 @@ class CLUNet(nn.Module):
         x5 = self.enc4(x4)
         x6 = self.enc5(x5)
 
-        #clearn_out = self.clearn(x6)
+        if train == True:
+            clearn_out = self.clearn(x6)
 
         mask = self.dec1(x6, x5)
         mask = self.dec2(mask, x4)
@@ -123,7 +124,10 @@ class CLUNet(nn.Module):
         mask = self.dec5(mask, x1)
         mask = self.out(mask)
         
-        return mask #, clearn_out
+        if train == True:
+            return mask, clearn_out
+        else:
+            return mask
 
 class SegmentationModel(nn.Module):
     """Segmentation model interface."""

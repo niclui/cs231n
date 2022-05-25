@@ -93,20 +93,26 @@ class CombinedLoss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, pred, truth):
-
-        #N, D = cl_features.shape
-        #if (N % 2) == 1:
-        #    cl_features = cl_features[:-1, :]
-        #    N, D = cl_features.shape
-
-        #cl_features = cl_features.reshape(2, N//2, D)
-
-        #SimClrLoss = simclr_loss_vectorized(cl_features[0], cl_features[1], tau = 5)
+    def forward(self, pred, truth, cl_features = None):
 
         DiceLoss = smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
         BCELoss = smp.losses.SoftBCEWithLogitsLoss()
-        return 0.4 * DiceLoss(pred, truth) + 0.6 * BCELoss(pred,truth) #+ 0 * SimClrLoss
+
+        Loss = 0.4 * DiceLoss(pred, truth) + 0.6 * BCELoss(pred,truth)
+
+        if cl_features is not None:
+            N, D = cl_features.shape
+            if (N % 2) == 1:
+                cl_features = cl_features[:-1, :]
+                N, D = cl_features.shape
+
+            cl_features = cl_features.reshape(2, N//2, D)
+
+            SimClrLoss = simclr_loss_vectorized(cl_features[0], cl_features[1], tau = 5)
+
+            Loss = 0.8 * Loss + 0.2 + SimClrLoss
+
+        return Loss
 
 def get_loss_fn(loss_args):
     loss_args_ = loss_args

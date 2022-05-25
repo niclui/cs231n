@@ -15,7 +15,7 @@ import cv2
 class SegmentationDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, transforms=None, split='train', 
                 augmentation=None, image_size=224, pretrained=False):
-        self._df = pd.read_csv(dataset_path)
+        self._df = pd.read_csv(dataset_path).sort_values(['batch', 'pair_idx'])
         #self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
         self._image_path = self._df['image_path']
         self._mask_path = self._df['mask_path']      
@@ -26,6 +26,11 @@ class SegmentationDataset(torch.utils.data.Dataset):
             augmentation=augmentation,
             image_size=image_size
         )
+
+    def get_batch_list(self):
+        indices = list(self._df.index)
+        lol = [indices[i:i+32] for i in range(0, len(indices), 32)]
+        return lol
 
     def __len__(self):
         return len(self._df)

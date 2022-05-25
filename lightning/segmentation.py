@@ -19,6 +19,17 @@ import cv2
 
 import pdb
 
+class BatchSampler(Sampler):
+    def __init__(self, batches):
+        self.batches = batches
+
+    def __iter__(self):
+        for batch in self.batches:
+            yield batch
+    
+    def __len__(self):
+        return len(self.batches)
+
 class SegmentationTask(pl.LightningModule, TFLogger):
     """Standard interface for the trainer to interact with the model."""
 
@@ -33,6 +44,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.n_workers = params['num_workers']
         self.lr = params['lr']
         self.batch_size = params['batch_size']
+        self.model_name = params['model']
 
 #DEBUGGING STEPS - DISPLAY IMAGES########################################
 
@@ -71,9 +83,13 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         #Display images
         #self.plot_batch(images, masks, batch_idx, 5)
 
-        #logits_masks, clearn_out = self.model(images)
-        logits_masks = self.model(images)
-        loss = self.loss(logits_masks, masks) #, clearn_out)
+        if self.model_name == "CLUNet":
+            logits_masks, clearn_out = self.model(images, train = True)
+            loss = self.loss(logits_masks, masks, clearn_out)
+        else:
+            logits_masks = self.model(images)
+            loss = self.loss(logits_masks, masks)
+
         self.log("loss", loss)
 
         return loss
@@ -85,7 +101,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         masks = torch.stack(masks)
 
         logits_masks = self.model(images)
-        loss = self.loss(logits_masks, masks) #, clearn_out)
+        loss = self.loss(logits_masks, masks)
 
         self.evaluator.process(batch, logits_masks)
         return loss
@@ -133,9 +149,16 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 image_size=224,
                                                 pretrained=True)
 
-        return DataLoader(dataset, shuffle=True, #For entire batch
-                          batch_size=self.batch_size, num_workers=self.n_workers,
-                          collate_fn=lambda x: x)
+        batch_lists = dataset.get_batch_list()
+
+        if self.model_name == "CLUNet": 
+            return DataLoader(dataset, batch_sampler = BatchSampler(batch_lists), #For entire batch
+                            batch_size=self.batch_size, num_workers=self.n_workers,
+                            collate_fn=lambda x: x)
+        else:
+            return DataLoader(dataset, shuffle=True, #For entire batch
+                            batch_size=self.batch_size, num_workers=self.n_workers,
+                            collate_fn=lambda x: x)
 
     def val_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'val_dataset.csv'),
