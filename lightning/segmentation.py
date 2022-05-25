@@ -71,8 +71,9 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         #Display images
         #self.plot_batch(images, masks, batch_idx, 5)
 
-        logits_masks, clearn_out = self.model(images)
-        loss = self.loss(logits_masks, masks, clearn_out)
+        #logits_masks, clearn_out = self.model(images)
+        logits_masks = self.model(images)
+        loss = self.loss(logits_masks, masks) #, clearn_out)
         self.log("loss", loss)
 
         return loss
@@ -83,8 +84,8 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         images = torch.stack(images)
         masks = torch.stack(masks)
 
-        logits_masks, clearn_out = self.model(images)
-        loss = self.loss(logits_masks, masks, clearn_out)
+        logits_masks = self.model(images)
+        loss = self.loss(logits_masks, masks) #, clearn_out)
 
         self.evaluator.process(batch, logits_masks)
         return loss

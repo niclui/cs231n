@@ -32,6 +32,7 @@ def train(dataset_folder="./data_files",
           weights_summary=None,
           augmentation = 'none',
           num_workers=0,
+          auto_lr_find= True,
           lr = 0.001,
           batch_size = 2,
           ):
@@ -77,6 +78,7 @@ def train(dataset_folder="./data_files",
                       weights_summary=weights_summary,
                       stochastic_weight_avg=stochastic_weight_avg,
                       max_epochs=max_epochs,
+                      auto_lr_find=True,
                       reload_dataloaders_every_n_epochs=1,
                       log_every_n_steps=1) #Handles functionality of training
     trainer.fit(task)
