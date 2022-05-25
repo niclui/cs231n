@@ -5,8 +5,6 @@ from os.path import join
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.loggers.test_tube import TestTubeLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from torch.utils.data.sampler import Sampler
-
 
 def get_ckpt_dir(save_path, exp_name):
     return os.path.join(save_path, exp_name, "ckpts")

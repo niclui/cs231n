@@ -18,6 +18,7 @@ from matplotlib.patches import Rectangle
 import cv2
 
 import pdb
+from torch.utils.data.sampler import Sampler
 
 class BatchSampler(Sampler):
     def __init__(self, batches):
@@ -153,7 +154,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
 
         if self.model_name == "CLUNet": 
             return DataLoader(dataset, batch_sampler = BatchSampler(batch_lists), #For entire batch
-                            batch_size=self.batch_size, num_workers=self.n_workers,
+                            num_workers=self.n_workers,
                             collate_fn=lambda x: x)
         else:
             return DataLoader(dataset, shuffle=True, #For entire batch
