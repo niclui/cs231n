@@ -26,6 +26,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
             augmentation=augmentation,
             image_size=image_size
         )
+        self._pos_vec = self._df['positional_val']
 
     def get_batch_list(self):
         indices = list(self._df.index)
@@ -51,8 +52,10 @@ class SegmentationDataset(torch.utils.data.Dataset):
         if self.augmentation != 'none':
             image = self._transforms(image)
             mask = self._transforms(mask)
+
+        positional_vecs = torch.tensor(np.float32(self._pos_vec[index]))
         
-        return image, mask
+        return image, mask, positional_vecs
 
 class SegmentationDemoDataset(SegmentationDataset):
     def __init__(self):

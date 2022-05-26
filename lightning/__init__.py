@@ -2,7 +2,7 @@ import torch
 
 from .classification import ClassificationTask
 from .detection import DetectionTask
-from .segmentation import SegmentationTask
+from .segmentation import *
 from .util import get_ckpt_callback, get_early_stop_callback
 from .util import get_logger
 
@@ -12,6 +12,8 @@ def get_task(args):
         return ClassificationTask(args)
     elif args.get("task") == "segmentation":
         return SegmentationTask(args)
+    elif args.get("task") == "multitask":
+        return MultitaskTask(args)
     else:
         return DetectionTask(args)
 
@@ -21,6 +23,8 @@ def load_task(ckpt_path, **kwargs):
         task = ClassificationTask
     elif args.get("task") == "segmentation":
         task = SegmentationTask
+    elif args.get("task") == "multitask":
+        task = MultitaskTask
     else:
         task = DetectionTask
     return task.load_from_checkpoint(ckpt_path)

@@ -11,9 +11,14 @@ def get_model(model_args):
     model_args_ = model_args
 
     if model_args_.get("model") == 'CLUNet':
-
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model = CLUNet(in_channels=3, n_classes=3, n_channels=48)
+        model.to(device)
+        return model
+
+    elif model_args_.get("model") == 'Multitask':
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model = Multitask(in_channels=3, n_classes=3, n_channels=48)
         model.to(device)
         return model
 

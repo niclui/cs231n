@@ -2,6 +2,7 @@ import torch
 import argparse
 import segmentation_models_pytorch as smp
 import torch.nn as nn
+import pdb
 
 
 def sim(z_i, z_j):
@@ -89,6 +90,26 @@ def simclr_loss_vectorized(out_left, out_right, tau):
     
     return loss
 
+class MultitaskLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, pred_seg, truth_seg, pred_reg, truth_reg, train=True):
+        truth_reg = truth_reg.unsqueeze(1)
+        SegLoss = smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
+        RegLoss = nn.MSELoss()
+        sigmoid = nn.Sigmoid()
+
+        reg_loss = 10*RegLoss(sigmoid(pred_reg), truth_reg)
+        seg_loss = SegLoss(pred_seg, truth_seg)
+        
+        if train:
+            Loss = reg_loss + seg_loss
+            return Loss, seg_loss, reg_loss
+        else:
+            Loss = seg_loss
+            return Loss
+
+
 class CombinedLoss(nn.Module):
     def __init__(self):
         super().__init__()
@@ -130,5 +151,7 @@ def get_loss_fn(loss_args):
         return smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
     elif loss_fn == 'Combined':
         return CombinedLoss()
+    elif loss_fn == 'Multitask':
+        return MultitaskLoss()
     else:
         raise ValueError(f"loss_fn {loss_args.loss_fn} not supported.")

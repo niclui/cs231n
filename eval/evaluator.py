@@ -58,7 +58,7 @@ class SegmentationEvaluator(DatasetEvaluator):
         return
 
     def process(self, inputs, logits_masks):
-        images, masks = map(list, zip(*inputs))
+        images, masks, _ = map(list, zip(*inputs))
         images = torch.stack(images)
         masks = torch.stack(masks)
 

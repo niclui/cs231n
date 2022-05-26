@@ -31,7 +31,7 @@ class BatchSampler(Sampler):
     def __len__(self):
         return len(self.batches)
 
-class SegmentationTask(pl.LightningModule, TFLogger):
+class MainTask(pl.LightningModule, TFLogger):
     """Standard interface for the trainer to interact with the model."""
 
     def __init__(self, params):
@@ -72,76 +72,6 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         #plt.show()
 
         plt.savefig( './images/masks_'+ str(batch_idx) + '.png', bbox_inches='tight')
-
-########################################################################
-
-    def training_step(self, batch, batch_idx): #Batch of data from train dataloader passed here
-
-        images, masks = map(list, zip(*batch))
-        images = torch.stack(images)
-        masks = torch.stack(masks)
-
-        #Display images
-        #self.plot_batch(images, masks, batch_idx, 5)
-
-        if self.model_name == "CLUNet":
-            logits_masks, clearn_out = self.model(images, train = True)
-            loss = self.loss(logits_masks, masks, clearn_out)
-        else:
-            logits_masks = self.model(images)
-            loss = self.loss(logits_masks, masks)
-
-        self.log("loss", loss)
-
-        return loss
-
-    def validation_step(self, batch, batch_idx): #Called once for every batch
-
-        images, masks = map(list, zip(*batch))
-        images = torch.stack(images)
-        masks = torch.stack(masks)
-
-        logits_masks = self.model(images)
-        loss = self.loss(logits_masks, masks)
-
-        self.evaluator.process(batch, logits_masks)
-        return loss
-
-    def validation_epoch_end(self, outputs): #outputs are loss tensors from validation step
-        avg_loss = torch.stack(outputs).mean()
-        self.log("val_loss", avg_loss)
-        metrics = self.evaluator.evaluate()
-        self.evaluator.reset()
-        self.log_dict(metrics, prog_bar=True)
-
-    def test_step(self, batch, batch_idx):
-        images, masks = map(list, zip(*batch))
-        images = torch.stack(images)
-        masks = torch.stack(masks)
-
-        logits_masks = self.model.forward(images)
-        loss = self.loss(logits_masks, masks)
-
-        self.evaluator.process(batch, logits_masks)
-
-    def test_epoch_end(self, outputs):
-        metrics = self.evaluator.evaluate()
-        self.log_dict(metrics)
-        return metrics
-
-    def predict_step(self, batch, batch_idx):
-        images, masks = map(list, zip(*batch))
-        images = torch.stack(images)
-        masks = torch.stack(masks)
-
-        logits_masks = self.model.forward(images)
-
-        self.evaluator.process(batch, logits_masks)
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=2e-3)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,T_max=50, eta_min=1e-6)
-        return [optimizer], [scheduler]
 
     def train_dataloader(self): #Called during init
         dataset = SegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'),
@@ -189,6 +119,138 @@ class SegmentationTask(pl.LightningModule, TFLogger):
                                                 pretrained=True)
         return DataLoader(dataset, shuffle=False,
                 batch_size=1, num_workers=self.n_workers, collate_fn=lambda x: x)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=2e-3)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,T_max=50, eta_min=1e-6)
+        return [optimizer], [scheduler]
+
+
+class SegmentationTask(MainTask):
+    def __init__(self, params):
+        super().__init__(params) #Initialize parent classes (pl.LightningModule params)
+
+########################################################################
+
+    def training_step(self, batch, batch_idx): #Batch of data from train dataloader passed here
+
+        images, masks, _ = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        #Display images
+        #self.plot_batch(images, masks, batch_idx, 5)
+
+        if self.model_name == "CLUNet":
+            logits_masks, clearn_out = self.model(images, train = True)
+            loss = self.loss(logits_masks, masks, clearn_out)
+        else:
+            logits_masks = self.model(images)
+            loss = self.loss(logits_masks, masks)
+
+        self.log("loss", loss)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx): #Called once for every batch
+
+        images, masks, _ = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        logits_masks = self.model(images)
+        loss = self.loss(logits_masks, masks)
+
+        self.evaluator.process(batch, logits_masks)
+        return loss
+
+    def validation_epoch_end(self, outputs): #outputs are loss tensors from validation step
+        avg_loss = torch.stack(outputs).mean()
+        self.log("val_loss", avg_loss)
+        metrics = self.evaluator.evaluate()
+        self.evaluator.reset()
+        self.log_dict(metrics, prog_bar=True)
+
+    def test_step(self, batch, batch_idx):
+        images, masks, _ = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        logits_masks = self.model.forward(images)
+        loss = self.loss(logits_masks, masks)
+
+        self.evaluator.process(batch, logits_masks)
+
+    def test_epoch_end(self, outputs):
+        metrics = self.evaluator.evaluate()
+        self.log_dict(metrics)
+        return metrics
+
+    def predict_step(self, batch, batch_idx):
+        images, masks = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        logits_masks = self.model.forward(images)
+
+        self.evaluator.process(batch, logits_masks)
+
+
+
+class MultitaskTask(MainTask):
+    def __init__(self, params):
+        super().__init__(params) #Initialize parent classes (pl.LightningModule params)
+
+    def training_step(self, batch, batch_idx): #Batch of data from train dataloader passed here
+        images, masks, positions = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+        positions = torch.stack(positions)
+
+        logits_masks, regress_out = self.model(images)
+        loss, seg_loss, reg_loss = self.loss(logits_masks, masks, regress_out, positions, train=True)
+
+        self.log("total loss", loss)
+        self.log("seg loss", seg_loss)
+        self.log("reg loss", reg_loss)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx): #Called once for every batch
+
+        images, masks, positions = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+        positions = torch.stack(positions)
+
+        logits_masks, regress_out = self.model(images)
+        loss = self.loss(logits_masks, masks, regress_out, positions, train=False)
+
+        self.evaluator.process(batch, logits_masks)
+        return loss
+
+    def validation_epoch_end(self, outputs): #outputs are loss tensors from validation step
+        avg_loss = torch.stack(outputs).mean()
+        self.log("val_loss", avg_loss)
+        metrics = self.evaluator.evaluate()
+        self.evaluator.reset()
+        self.log_dict(metrics, prog_bar=True)
+
+    def test_step(self, batch, batch_idx):
+        images, masks, positions = map(list, zip(*batch))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+        positions = torch.stack(positions)
+
+        logits_masks, regress_out = self.model(images)
+        loss = self.loss(logits_masks, masks, regress_out, positions, train=False)
+
+        self.evaluator.process(batch, logits_masks)
+
+    def test_epoch_end(self, outputs):
+        metrics = self.evaluator.evaluate()
+        self.log_dict(metrics)
+        return metrics
 
     #Process
     #1. Call Trainer.fit
