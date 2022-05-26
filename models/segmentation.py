@@ -106,7 +106,7 @@ class CLUNet(nn.Module):
         self.dec5 = Up(2 * n_channels, n_channels)
         self.out = Out(n_channels, n_classes)
 
-    def forward(self, x, train = False):
+    def forward(self, x, aux = False, pretraining = False):
         x1 = self.conv(x)
         x2 = self.enc1(x1)
         x3 = self.enc2(x2)
@@ -114,18 +114,21 @@ class CLUNet(nn.Module):
         x5 = self.enc4(x4)
         x6 = self.enc5(x5)
 
-        if train == True:
+        if aux == True:
             clearn_out = self.clearn(x6)
 
-        mask = self.dec1(x6, x5)
-        mask = self.dec2(mask, x4)
-        mask = self.dec3(mask, x3)
-        mask = self.dec4(mask, x2)
-        mask = self.dec5(mask, x1)
-        mask = self.out(mask)
+        if pretraining == False:
+            mask = self.dec1(x6, x5)
+            mask = self.dec2(mask, x4)
+            mask = self.dec3(mask, x3)
+            mask = self.dec4(mask, x2)
+            mask = self.dec5(mask, x1)
+            mask = self.out(mask)
         
-        if train == True:
+        if (aux == True) & (pretraining == False):
             return mask, clearn_out
+        elif (aux == True) & (pretraining == True):
+            return clearn_out
         else:
             return mask
 

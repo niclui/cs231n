@@ -15,7 +15,10 @@ import cv2
 class SegmentationDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, transforms=None, split='train', 
                 augmentation=None, image_size=224, pretrained=False):
-        self._df = pd.read_csv(dataset_path).sort_values(['batch', 'pair_idx'])
+        try:
+            self._df = pd.read_csv(dataset_path).sort_values(['batch', 'pair_idx'])
+        except:
+            self._df = pd.read_csv(dataset_path)
         #self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
         self._image_path = self._df['image_path']
         self._mask_path = self._df['mask_path']      

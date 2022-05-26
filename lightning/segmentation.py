@@ -46,6 +46,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.lr = params['lr']
         self.batch_size = params['batch_size']
         self.model_name = params['model']
+        self.pretraining = params['pretraining']
 
 #DEBUGGING STEPS - DISPLAY IMAGES########################################
 
@@ -84,15 +85,22 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         #Display images
         #self.plot_batch(images, masks, batch_idx, 5)
 
-        if self.model_name == "CLUNet":
-            logits_masks, clearn_out = self.model(images, train = True)
-            loss = self.loss(logits_masks, masks, clearn_out)
+        if ((self.model_name == "CLUNet") & (self.pretraining== False)):
+            logits_masks, clearn_out = self.model(images, aux = True)
+            loss, simclr_loss = self.loss(logits_masks, masks, clearn_out)
+            self.log("simclr_loss", simclr_loss)
+            self.log("loss", loss)
+
+        elif ((self.model_name == "CLUNet") & (self.pretraining == True)):
+            clearn_out = self.model(images, aux = True, pretraining = True)
+            loss = self.loss(None, None, clearn_out)
+            self.log("simclr_loss", loss)
+
         else:
             logits_masks = self.model(images)
             loss = self.loss(logits_masks, masks)
-
-        self.log("loss", loss)
-
+            self.log("loss", loss)
+        
         return loss
 
     def validation_step(self, batch, batch_idx): #Called once for every batch
@@ -100,19 +108,27 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         images, masks = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
+        
+        if self.pretraining:
+            clearn_out = self.model(images, aux = True, pretraining = True)
+            loss = self.loss(None, None, clearn_out)
+        else:
+            logits_masks = self.model(images)
+            loss = self.loss(logits_masks, masks)
+            self.evaluator.process(batch, logits_masks)
 
-        logits_masks = self.model(images)
-        loss = self.loss(logits_masks, masks)
-
-        self.evaluator.process(batch, logits_masks)
         return loss
 
     def validation_epoch_end(self, outputs): #outputs are loss tensors from validation step
         avg_loss = torch.stack(outputs).mean()
-        self.log("val_loss", avg_loss)
-        metrics = self.evaluator.evaluate()
-        self.evaluator.reset()
-        self.log_dict(metrics, prog_bar=True)
+        
+        if self.pretraining == False:
+            self.log("val_loss", avg_loss)
+            metrics = self.evaluator.evaluate()
+            self.evaluator.reset()
+            self.log_dict(metrics, prog_bar=True)
+        else:
+            self.log("val_loss", avg_loss)
 
     def test_step(self, batch, batch_idx):
         images, masks = map(list, zip(*batch))

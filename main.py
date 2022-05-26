@@ -35,6 +35,7 @@ def train(dataset_folder="./data_files",
           auto_lr_find= True,
           lr = 0.001,
           batch_size = 2,
+          pretraining = False
           ):
     """
     Run the training experiment.
