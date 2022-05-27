@@ -10,7 +10,7 @@ from models import get_model
 from eval import get_loss_fn, SegmentationEvaluator
 from util import constants as C
 from .logger import TFLogger
-from data import SegmentationDemoDataset, SegmentationDataset
+from data import SegmentationDemoDataset, SegmentationDataset, MultiSegmentationDataset
 from torch.nn.functional import softmax
 
 import matplotlib.pyplot as plt
@@ -47,8 +47,6 @@ class MainTask(pl.LightningModule, TFLogger):
         self.batch_size = params['batch_size']
         self.model_name = params['model']
 
-#DEBUGGING STEPS - DISPLAY IMAGES########################################
-
     def show_img(self, img, mask=None):
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         plt.imshow(img, cmap='bone')
@@ -80,9 +78,8 @@ class MainTask(pl.LightningModule, TFLogger):
                                                 image_size=224,
                                                 pretrained=True)
 
-        batch_lists = dataset.get_batch_list()
-
         if self.model_name == "CLUNet": 
+            batch_lists = dataset.get_batch_list()
             return DataLoader(dataset, batch_sampler = BatchSampler(batch_lists), #For entire batch
                             num_workers=self.n_workers,
                             collate_fn=lambda x: x)
@@ -97,7 +94,6 @@ class MainTask(pl.LightningModule, TFLogger):
                                                 augmentation=self.augmentation,
                                                 image_size=224,
                                                 pretrained=True)
-
         return DataLoader(dataset, shuffle=False, num_workers = self.n_workers,
                 batch_size=4, collate_fn=lambda x: x)
 
@@ -130,10 +126,7 @@ class SegmentationTask(MainTask):
     def __init__(self, params):
         super().__init__(params) #Initialize parent classes (pl.LightningModule params)
 
-########################################################################
-
     def training_step(self, batch, batch_idx): #Batch of data from train dataloader passed here
-
         images, masks, _ = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
@@ -153,7 +146,6 @@ class SegmentationTask(MainTask):
         return loss
 
     def validation_step(self, batch, batch_idx): #Called once for every batch
-
         images, masks, _ = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
@@ -195,37 +187,57 @@ class SegmentationTask(MainTask):
 
         self.evaluator.process(batch, logits_masks)
 
-
-
 class MultitaskTask(MainTask):
     def __init__(self, params):
         super().__init__(params) #Initialize parent classes (pl.LightningModule params)
+        self.testing_loss = smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
+        self.global_idx = 0
+
+    def train_dataloader(self): # Redefined for multitask purposes
+        dataset = MultiSegmentationDataset(os.path.join(self.dataset_folder, 'train_dataset.csv'), # Main dataset for segmentation
+                                           os.path.join(self.dataset_folder, 'holdout_dataset.csv'), # Holdout dataset for position vector prediction
+                                                split="train",
+                                                augmentation=self.augmentation,
+                                                image_size=224,
+                                                pretrained=True)
+
+        return DataLoader(dataset, shuffle=True, #For entire batch
+                            batch_size=self.batch_size, num_workers=self.n_workers,
+                            collate_fn=lambda x: x)
 
     def training_step(self, batch, batch_idx): #Batch of data from train dataloader passed here
-        images, masks, positions = map(list, zip(*batch))
+        images, masks, positions, mask_present = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
         positions = torch.stack(positions)
-
+        mask_present = torch.stack(mask_present)
+        mask_present = mask_present == 1
+        mask_present = mask_present.squeeze(-1)
+        
         logits_masks, regress_out = self.model(images)
-        loss, seg_loss, reg_loss = self.loss(logits_masks, masks, regress_out, positions, train=True)
+
+        alpha = 10 * (1 - self.global_idx/30000)
+        self.log("alpha weight", alpha)
+        
+        loss, seg_loss, reg_loss = self.loss(logits_masks, masks, regress_out, positions, mask_present, alpha, train=True)
 
         self.log("total loss", loss)
         self.log("seg loss", seg_loss)
         self.log("reg loss", reg_loss)
 
+        self.global_idx += 1
+
         return loss
 
     def validation_step(self, batch, batch_idx): #Called once for every batch
-
         images, masks, positions = map(list, zip(*batch))
         images = torch.stack(images)
         masks = torch.stack(masks)
-        positions = torch.stack(positions)
+        positions = torch.stack(positions)        
 
         logits_masks, regress_out = self.model(images)
-        loss = self.loss(logits_masks, masks, regress_out, positions, train=False)
-
+        loss = self.testing_loss(logits_masks, masks)
+        
         self.evaluator.process(batch, logits_masks)
         return loss
 
@@ -243,7 +255,7 @@ class MultitaskTask(MainTask):
         positions = torch.stack(positions)
 
         logits_masks, regress_out = self.model(images)
-        loss = self.loss(logits_masks, masks, regress_out, positions, train=False)
+        loss = self.testing_loss(logits_masks, masks)
 
         self.evaluator.process(batch, logits_masks)
 

@@ -142,7 +142,6 @@ class Multitask(nn.Module):
         
         return mask, regress_out
 
-
 class CLUNet(nn.Module):
     def __init__(self, in_channels, n_classes, n_channels):
         super().__init__()

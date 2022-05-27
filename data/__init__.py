@@ -3,4 +3,5 @@ from .dataset import (ImageClassificationDataset,
                       ImageDetectionDataset,
                       ImageDetectionDemoDataset,
                       SegmentationDataset,
-                      SegmentationDemoDataset)
+                      SegmentationDemoDataset,
+                      MultiSegmentationDataset)

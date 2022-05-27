@@ -93,20 +93,30 @@ def simclr_loss_vectorized(out_left, out_right, tau):
 class MultitaskLoss(nn.Module):
     def __init__(self):
         super().__init__()
-    def forward(self, pred_seg, truth_seg, pred_reg, truth_reg, train=True):
-        truth_reg = truth_reg.unsqueeze(1)
-        SegLoss = smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
+
+    def forward(self, pred_seg, truth_seg, pred_reg, truth_reg, mask_present, alpha, train=True):
+        DiceLoss = smp.losses.DiceLoss(mode = 'multilabel', from_logits = True)
         RegLoss = nn.MSELoss()
         sigmoid = nn.Sigmoid()
 
-        reg_loss = 10*RegLoss(sigmoid(pred_reg), truth_reg)
-        seg_loss = SegLoss(pred_seg, truth_seg)
-        
-        if train:
-            Loss = reg_loss + seg_loss
-            return Loss, seg_loss, reg_loss
+        reg_loss =  alpha * RegLoss(sigmoid(pred_reg), truth_reg)
+
+        #truth_seg = truth_seg.unsqueeze(1)
+
+        if train:            
+            if (torch.sum(mask_present) == 0):
+                dice_loss = 0
+            else:
+                truth_seg = truth_seg[mask_present, :, :]
+                pred_seg = pred_seg[mask_present, :, :]
+                dice_loss = DiceLoss(pred_seg, truth_seg)
+                
+            Loss = reg_loss + dice_loss
+            return Loss, dice_loss, reg_loss
+
         else:
-            Loss = seg_loss
+            dice_loss = DiceLoss(pred_seg, truth_seg)
+            Loss = dice_loss
             return Loss
 
 

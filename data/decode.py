@@ -59,7 +59,8 @@ if __name__ == '__main__':
             
             # decode the mask
             decoded_mask = rle_decode(id_class['segmentation'], (id_class['slice_height'], id_class['slice_width'])) 
-
+            
+            # Masks are resized here!
             decoded_mask = cv2.resize(decoded_mask, (IMAGE_SIZE, IMAGE_SIZE))
             
             # store decoded mask in dictionary

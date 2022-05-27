@@ -29,8 +29,8 @@ def evens_pairing(evens, idx):
     evens = pd.concat([evens[['case', 'slice_id', 'day_x', 'pair_idx']].rename({'day_x': 'day'}, axis = 'columns'), evens[['case', 'slice_id', 'day_y', 'pair_idx']].rename({'day_y': 'day'}, axis = 'columns')])
     return evens
 
-def dataset_split(dataset_path, output_folder, train_prop=0.7, val_prop=0.2, test_prop=0.1):
-    # Default split is 70/20/10
+def dataset_split(dataset_path, output_folder, holdout_prop=0, train_prop=0.7, val_prop=0.2, test_prop=0.1):
+    # Default split for train/test/val is 70/20/10
     # Check if the splits add up to 1
     total = train_prop + val_prop + test_prop
     if abs(total - 1) > 0.0000001:
@@ -101,30 +101,58 @@ def dataset_split(dataset_path, output_folder, train_prop=0.7, val_prop=0.2, tes
 
     n_batches = len(data)/32.0
     train_batch = int(math.ceil(train_prop * n_batches))
-    
+
     # Split into train and val+test datasets
     #train, val_test = train_test_split(data, test_size=val_prop+test_prop, random_state=0)
-    train = data[data['batch'] <= train_batch]
-    others = data[data['batch'] > train_batch]
+    # train = data[data['batch'] <= train_batch]
+    # others = data[data['batch'] > train_batch]
+
+    # Generate the positional vectors
+    helen = data.groupby(["case","day"]).count()['slice_id'].reset_index()
+    helen.columns=['case','day','total_slices']
+
+    data = pd.merge(data, helen, how='left', on = ['case','day'])
+    data['positional_val'] = data['slice_id'] / data['total_slices']
+
+    # Split into holdout and non-holdout
+    holdout, non_holdout = train_test_split(data, test_size=1-holdout_prop, random_state=0)
+
+    # Split holdout into train and val+test
+    train, val_test = train_test_split(non_holdout, test_size=val_prop+test_prop, random_state=0)
 
     # Split the val+test datasets into validation and test
-    val, test = train_test_split(others, test_size=test_prop/(val_prop+test_prop), random_state=0)
+    val, test = train_test_split(val_test, test_size=test_prop/(val_prop+test_prop), random_state=0)
         
     # Output train, val, test datasets
+    holdout.to_csv(os.path.join(output_folder, "holdout_dataset.csv"), index=False)
     train.to_csv(os.path.join(output_folder, "train_dataset.csv"), index=False)
     val.to_csv(os.path.join(output_folder, "val_dataset.csv"), index=False)
     test.to_csv(os.path.join(output_folder, "test_dataset.csv"), index=False)
+
+    # Print out df length
+    data_len = len(data)
+    holdout_len = len(holdout)
+    train_len = len(train)
+    val_len = len(val)
+    test_len = len(test)
+    print(f"Overall Data: {data_len}")
+    print(f"Holdout: {holdout_len}")
+    print(f"Train: {train_len}")
+    print(f"Val: {val_len}")
+    print(f"Test: {test_len}")
 
 if __name__ == '__main__':
     # usage: python data/dataset_split.py [final.csv] [output folder] [train percent] [val percent] [test percent]
     dataset_path = sys.argv[1]
     output_folder = sys.argv[2]
-    try:
-        train_prop = int(sys.argv[3]) / 100
-        val_prop = int(sys.argv[4]) / 100
-        test_prop = int(sys.argv[5]) / 100
-        #print(f"Using train-val-test split of {sys.argv[3]}%-{sys.argv[4]}%-{sys.argv[5]}%")
-        dataset_split(dataset_path, output_folder, train_prop, val_prop, test_prop)
-    except:
-        #print("Using default train-val-test split of 70%-20%-10%")
-        dataset_split(dataset_path, output_folder)
+
+    holdout_prop = float(sys.argv[3]) / 100
+    train_prop = float(sys.argv[4]) / 100
+    val_prop = float(sys.argv[5]) / 100
+    test_prop = float(sys.argv[6]) / 100
+    
+    #print(f"Using train-val-test split of {sys.argv[3]}%-{sys.argv[4]}%-{sys.argv[5]}%")
+    dataset_split(dataset_path, output_folder, holdout_prop, train_prop, val_prop, test_prop)
+    # except:
+    #     #print("Using default train-val-test split of 70%-20%-10%")
+    #     dataset_split(dataset_path, output_folder)
