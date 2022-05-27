@@ -19,7 +19,7 @@ def train(dataset_folder="./data_files",
           task='classification',
           gpus=1,
           pretrained=True,
-          num_classes=1,
+          num_classes=3,
           accelerator=None,
           logger_type='test_tube',
           gradient_clip_val=0.5,
@@ -34,7 +34,7 @@ def train(dataset_folder="./data_files",
           num_workers=0,
           auto_lr_find= True,
           lr = 0.001,
-          batch_size = 2,
+          batch_size = 2
           ):
     """
     Run the training experiment.
@@ -64,9 +64,15 @@ def train(dataset_folder="./data_files",
 
     """
     args = Args(locals()) #Allows you to access stuff in the dictionary as args.exp_name
+    # Set parameters for multitask
+    if args["task"] == "multitask":
+        args["loss"] = "Multitask"
+        args["model"] = "Multitask"
+
     init_exp_folder(args) #Sets up experiment directory 
     task = get_task(args) #Have to define this pytorch lightning module, for implementation, where constructor in segmentation.py is called
     #Then you instantiate trainer and start training
+    #print(task)
     trainer = Trainer(gpus=gpus, 
                       accelerator=accelerator,
                       logger=get_logger(logger_type, save_dir, exp_name), #Logging tool
@@ -82,7 +88,6 @@ def train(dataset_folder="./data_files",
                       reload_dataloaders_every_n_epochs=1,
                       log_every_n_steps=1) #Handles functionality of training
     trainer.fit(task)
-
 
 def test(ckpt_path,
          gpus=0,

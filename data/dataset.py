@@ -28,6 +28,59 @@ class SegmentationDataset(torch.utils.data.Dataset):
         )
         self._pos_vec = self._df['positional_val']
 
+    # def get_batch_list(self):
+    #     indices = list(self._df.index)
+    #     lol = [indices[i:i+32] for i in range(0, len(indices), 32)]
+    #     return lol
+
+    def __len__(self):
+        return len(self._df)
+
+    def __getitem__(self, index):
+
+        image = cv2.imread(self._image_path[index], cv2.IMREAD_UNCHANGED)
+        image = (image - image.min())/(image.max() - image.min())*255.0 
+        image = cv2.resize(image, (C.IMAGE_SIZE, C.IMAGE_SIZE))
+        image = np.tile(image[...,None], [1, 1, 3])
+        image = image.astype(np.float32) /255.
+
+        mask = np.load(self._mask_path[index])
+
+        mask = torch.tensor(mask.transpose(2, 0, 1), dtype = torch.float32)
+        image = torch.tensor(image.transpose(2, 0, 1), dtype = torch.float32)
+
+        if self.augmentation != 'none':
+            image = self._transforms(image)
+            mask = self._transforms(mask)
+
+        positional_vecs = torch.tensor(np.float32(self._pos_vec[index]))
+        
+        return image, mask, positional_vecs
+
+class MultiSegmentationDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset_path1, dataset_path2, transforms=None, split='train', 
+                augmentation=None, image_size=224, pretrained=False):
+        self._df_train = pd.read_csv(dataset_path1).sort_values(['batch', 'pair_idx'])
+        self._df_ho = pd.read_csv(dataset_path2).sort_values(['batch', 'pair_idx'])
+
+        # Mask out the masks in holdout
+        self._df_ho['mask_path'] = None
+        # Now combine both together
+        pdb.set_trace()
+        self._df = pd.concat([self.df_train, self._df_ho], axis=0)
+
+        #self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
+        self._image_path = self._df['image_path']
+        self._mask_path = self._df['mask_path']      
+        self._pretrained = pretrained
+        self.augmentation = augmentation
+        self._transforms = get_transforms(
+            split=split,
+            augmentation=augmentation,
+            image_size=image_size
+        )
+        self._pos_vec = self._df['positional_val']
+
     def get_batch_list(self):
         indices = list(self._df.index)
         lol = [indices[i:i+32] for i in range(0, len(indices), 32)]
@@ -44,9 +97,15 @@ class SegmentationDataset(torch.utils.data.Dataset):
         image = np.tile(image[...,None], [1, 1, 3])
         image = image.astype(np.float32) /255.
 
-        mask = np.load(self._mask_path[index])
+        if self._mask_path[index] is not None:
+            mask = np.load(self._mask_path[index])            
+            mask = torch.tensor(mask.transpose(2, 0, 1), dtype = torch.float32)
+        else:
+            mask = np.empty((C.IMAGE_SIZE, C.IMAGE_SIZE))
+            pdb.set_trace()
+            mask[:] = np.nan
+            mask = torch.tensor(mask.transpose(2, 0, 1), dtype = torch.float32)
 
-        mask = torch.tensor(mask.transpose(2, 0, 1), dtype = torch.float32)
         image = torch.tensor(image.transpose(2, 0, 1), dtype = torch.float32)
 
         if self.augmentation != 'none':
