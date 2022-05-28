@@ -121,3 +121,15 @@ lightning_logs/
 
 # sandbox
 sandbox
+
+# data
+masks_folder/
+datasets/
+data_files/
+uw-madison-gi-tract-image-segmentation.zip
+*.csv 
+.DS_Store
+data/.DS_Store
+images/
+masks_folder_downsample/
+images/
