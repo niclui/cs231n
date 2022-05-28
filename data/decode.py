@@ -34,7 +34,7 @@ if __name__ == '__main__':
     masks_folder_path = sys.argv[1]
     combined_csv_path = sys.argv[2]
     final_csv_path = sys.argv[3]
-    downsample = sys.argv[4]
+    downsample = float(sys.argv[4])
 
     # Make masks folder path if it doesn't already exist
     if not os.path.exists(masks_folder_path):
@@ -42,6 +42,18 @@ if __name__ == '__main__':
 
     # Read in the combined df
     combined_df = pd.read_csv(combined_csv_path, keep_default_na=False, index_col=0)
+
+    #Downsample some empty images
+    if downsample != 1:
+        combined_df['empty'] = combined_df.apply(lambda x: 1 if x.segmentation == '' else 0, axis = 1)
+        combined_df['empty_image'] = combined_df.groupby(['id'])['empty'].transform(lambda x: sum(x))
+        empty_df = combined_df[combined_df['empty_image']== 3]
+        masks_df = combined_df[combined_df['empty_image']< 3]
+        
+        random_select = empty_df[empty_df['class'] == 'large_bowel'].sample(frac = downsample)['id']
+        empty_df = pd.merge(random_select, empty_df, how = 'left', on = 'id')
+
+        combined_df = pd.concat([masks_df, empty_df])
 
     classes = ['small_bowel', 'large_bowel', 'stomach'] # mask classes
     mask_paths = []
@@ -69,23 +81,12 @@ if __name__ == '__main__':
         mask_path = os.path.join(masks_folder_path, case_id + '.npy')
         np.save(mask_path, case_mask)
         mask_paths.append(mask_path)
-        
+    
     # save csv of mask paths
     combined_df.reset_index(inplace=True)
-
-    #Downsample some empty images
-    #if downsample != 1:
-    #    combined_df['empty'] = combined_df.apply(lambda x: 1 if x.segmentation == '' else 0, axis = 1)
-    #    combined_df['empty_image'] = combined_df.groupby(['id'])['empty'].transform(lambda x: sum(x))
-    #    empty_df = combined_df[combined_df['empty_image']== 3]
-    #    masks_df = combined_df[combined_df['empty_image']< 3]
-        
-    #    random_select = empty_df[empty_df['class'] == 'large_bowel'].sample(frac = 0.1)['id']
-    #    empty_df = pd.merge(random_select, empty_df, how = 'left', on = 'id')
-
-    #    combined_df = pd.concat([masks_df, empty_df])
 
     mask_path_df = combined_df[['case', 'day', 'slice_id', 'image_path', 'pic_info', 'slice_height', 'slice_width', 'pixel_height', 'pixel_width']]
     mask_path_df.drop_duplicates(inplace=True)
     mask_path_df['mask_path'] = mask_paths
+
     mask_path_df.to_csv(final_csv_path + '.csv')

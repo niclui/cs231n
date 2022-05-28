@@ -2,12 +2,15 @@ import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
-import torchvision.transforms as T
+#import torchvision.transforms as T
 import torch.nn as nn
 # from detectron2.data import DatasetMapper
 
 from util import constants as C
 from .transforms import get_transforms
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+import albumentations.augmentations as AA
 
 import pdb
 import cv2
@@ -40,21 +43,36 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
 
+        #Using cv2
         image = cv2.imread(self._image_path[index], cv2.IMREAD_UNCHANGED)
+        #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        transform = A.Compose([
+            A.Resize(C.IMAGE_SIZE, C.IMAGE_SIZE),
+            A.RandomResizedCrop(C.IMAGE_SIZE, C.IMAGE_SIZE),
+            AA.transforms.HorizontalFlip(p = 0.5),
+            A.OneOf([
+                #A.ColorJitter(brightness=0.5,contrast=0.5,
+                #saturation=0.5, hue=0.1, p=0.8),
+                A.ToGray(p=0.2),
+                A.GaussianBlur()
+            ])])
+
+        image = transform(image = image)['image']
+
         image = (image - image.min())/(image.max() - image.min())*255.0 
-        image = cv2.resize(image, (C.IMAGE_SIZE, C.IMAGE_SIZE))
         image = np.tile(image[...,None], [1, 1, 3])
-        image = image.astype(np.float32) /255.
+        image = image.astype(np.float32)
 
         mask = np.load(self._mask_path[index])
 
         mask = torch.tensor(mask.transpose(2, 0, 1), dtype = torch.float32)
         image = torch.tensor(image.transpose(2, 0, 1), dtype = torch.float32)
 
-        if self.augmentation != 'none':
-            image = self._transforms(image)
-            mask = self._transforms(mask)
-        
+        #if self.augmentation != 'none':
+        #    mask = self._transforms(mask)
+        #    image = self._transforms(image)
+
         return image, mask
 
 class SegmentationDemoDataset(SegmentationDataset):

@@ -2,133 +2,185 @@ import segmentation_models_pytorch as smp
 from torch import nn
 import torch
 import torch.nn.functional as F
+import torchvision
 
 import pdb
 
 #Updated U-Net
+#Reference: https://github.com/kevinlu1211/pytorch-unet-resnet-50-encoder/blob/master/u_net_resnet_50_encoder.py
 
-class DoubleConv(nn.Module):
-    """(Conv3D -> BN -> ReLU) * 2"""
+class Conv(nn.Module):
+    """(Conv2D -> BN -> ReLU)"""
     def __init__(self, in_channels, out_channels, num_groups=8):
         super().__init__()
-        self.double_conv = nn.Sequential(
+        self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
           )     
         
     def forward(self,x):
-        return self.double_conv(x)
+        return self.conv(x)
 
-class Down(nn.Module):
+class Bridge(nn.Module):
+    """
+    This is the middle layer of the UNet.
+    """
 
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.encoder = nn.Sequential(
-            nn.MaxPool2d(2, 2),
-            DoubleConv(in_channels, out_channels)
+        self.bridge = nn.Sequential(
+            Conv(in_channels, out_channels),
+            Conv(out_channels, out_channels)
         )
+
     def forward(self, x):
-        return self.encoder(x)
+        return self.bridge(x)
 
-    
 class Up(nn.Module):
+    """
+    Up block that encapsulates one up-sampling step which consists of Upsample -> ConvBlock -> ConvBlock
+    """
 
-    def __init__(self, in_channels, out_channels, bilinear=True):
+    def __init__(self, in_channels, out_channels, up_conv_in_channels=None, up_conv_out_channels=None,
+                 upsampling_method="conv_transpose"):
         super().__init__()
-        
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        else:
-            self.up = nn.ConvTranspose2d(in_channels // 2, in_channels // 2, kernel_size=2, stride=2)
-            
-        self.conv = DoubleConv(in_channels, out_channels)
-        
-    def forward(self, x1, x2):
-        x1 = self.up(x1)
 
-        diffY = x2.size()[2] - x1.size()[2]
-        diffX = x2.size()[3] - x1.size()[3]
+        if up_conv_in_channels == None:
+            up_conv_in_channels = in_channels
+        if up_conv_out_channels == None:
+            up_conv_out_channels = out_channels
 
-        x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2))
-        x = torch.cat([x2, x1], dim=1)
-        x = self.conv(x)
-        return x       
+        if upsampling_method == "conv_transpose":
+            self.upsample = nn.ConvTranspose2d(up_conv_in_channels, up_conv_out_channels, kernel_size=2, stride=2)
+        elif upsampling_method == "bilinear":
+            self.upsample = nn.Sequential(
+                nn.Upsample(mode='bilinear', scale_factor=2),
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1)
+            )
+        self.conv_block_1 = Conv(in_channels, out_channels)
+        self.conv_block_2 = Conv(out_channels, out_channels)
+
+    def forward(self, up_x, down_x):
+        """
+        :param up_x: this is the output from the previous up block
+        :param down_x: this is the output from the down block
+        :return: upsampled feature map
+        """
+        x = self.upsample(up_x)
+        x = torch.cat([x, down_x], 1)
+        x = self.conv_block_1(x)
+        x = self.conv_block_2(x)
+        return x
 
 class Out(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size = 1)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size = 1, stride = 1)
 
     def forward(self, x):
         return self.conv(x)
 
 class CLearn(nn.Module):
-    def __init__(self, in_channels, n_channels, feature_dim):
+
+    def __init__(self, n_channels, feature_dim):
         super().__init__()
-        self.compress= Down(in_channels, 4 * n_channels)
-        self.g = nn.Sequential(nn.Linear(1728, 512, bias=False),
-                                nn.BatchNorm1d(512),
+        self.g = nn.Sequential(nn.Linear(32 * n_channels, 32 * n_channels, bias=False),
+                                nn.BatchNorm1d(32 * n_channels),
                                 nn.ReLU(inplace=True), 
-                                nn.Linear(512, feature_dim, bias=True))
+                                nn.Linear(32 * n_channels, feature_dim, bias=True))
+
 
     def forward(self, x):
-        x1 = self.compress(x)
-        x2 = torch.flatten(x1, start_dim = 1)
-        x3 = self.g(x2)
-        return x3
+        x = self.g(x)
+        return x
 
 class CLUNet(nn.Module):
-    def __init__(self, in_channels, n_classes, n_channels):
+
+    DEPTH = 5
+
+    def __init__(self, in_channels, n_classes, n_channels, pretraining= False):
         super().__init__()
         self.in_channels = in_channels
         self.n_classes = n_classes
         self.n_channels = n_channels
 
-        self.conv = DoubleConv(in_channels, n_channels)
-        self.enc1 = Down(n_channels, 2 * n_channels)
-        self.enc2 = Down(2 * n_channels, 4 * n_channels)
-        self.enc3 = Down(4 * n_channels, 8 * n_channels)
-        self.enc4 = Down(8 * n_channels, 16 * n_channels)
-        self.enc5 = Down(16 * n_channels, 16 * n_channels)
+        resnet = torchvision.models.resnet.resnet50(pretrained=True)
 
-        self.clearn = CLearn(16 * n_channels, n_channels, feature_dim = 128)
+        #Freeze layers
+        if pretraining:
+            ct = 0
+            for child in resnet.children():
+                ct += 1
+                if ct < 9:
+                    for param in child.parameters():
+                        param.requires_grad = False
+
+        down_blocks = []
+        up_blocks = []
+
+        self.input_block = nn.Sequential(*list(resnet.children()))[:3]
+        self.input_pool = list(resnet.children())[3]
+        for bottleneck in list(resnet.children()):
+            if isinstance(bottleneck, nn.Sequential):
+                down_blocks.append(bottleneck)
+
+        #Make it smaller
+        del down_blocks[-1]
+        self.down_blocks = nn.ModuleList(down_blocks)
+
+        #pdb.set_trace()
+
+        #PUT YOUR MULTI-TASK CODE HERE/REG CODE HERE
+        self.pooling = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        self.clearn = CLearn(32, feature_dim = 32)
+
+        self.bridge = Bridge(32 * n_channels, 32 * n_channels)
         
-        self.dec1 = Up(32 * n_channels, 8 * n_channels)
-        self.dec2 = Up(16 * n_channels, 4 * n_channels)
-        self.dec3 = Up(8 * n_channels, 2 * n_channels)
-        self.dec4 = Up(4 * n_channels, n_channels)
-        self.dec5 = Up(2 * n_channels, n_channels)
-        self.out = Out(n_channels, n_classes)
+        up_blocks.append(Up(32 * n_channels, 16 * n_channels))
+        up_blocks.append(Up(16 * n_channels, 8 * n_channels))
+        #up_blocks.append(Up(8 * n_channels, 4 * n_channels))
 
-    def forward(self, x, aux = False, pretraining = False):
-        x1 = self.conv(x)
-        x2 = self.enc1(x1)
-        x3 = self.enc2(x2)
-        x4 = self.enc3(x3)
-        x5 = self.enc4(x4)
-        x6 = self.enc5(x5)
+        up_blocks.append(Up(4 * n_channels + 2 * n_channels, 4 * n_channels, 8 * n_channels, 4 * n_channels))
+        up_blocks.append(Up(2 * n_channels + in_channels, 2 * n_channels, 4 * n_channels, 2 * n_channels))
 
-        if aux == True:
-            clearn_out = self.clearn(x6)
+        self.up_blocks = nn.ModuleList(up_blocks)
+        self.out = Out(2 * n_channels, n_classes)
+
+    def forward(self, x, aux = None, pretraining = False):
+
+        pre_pools = dict()
+        pre_pools[f"layer_0"] = x
+        x = self.input_block(x)
+        pre_pools[f"layer_1"] = x
+        x = self.input_pool(x)
+
+        for i, block in enumerate(self.down_blocks, 2):
+            x = block(x)
+            if i == (CLUNet.DEPTH - 1):
+                continue
+            pre_pools[f"layer_{i}"] = x
+
+        if aux == "simclr":
+            aux_out = self.clearn(self.pooling(x).squeeze())
+        elif aux == "reg":
+            #ADD YOUR REG CODE HERE
+            pass
 
         if pretraining == False:
-            mask = self.dec1(x6, x5)
-            mask = self.dec2(mask, x4)
-            mask = self.dec3(mask, x3)
-            mask = self.dec4(mask, x2)
-            mask = self.dec5(mask, x1)
-            mask = self.out(mask)
+
+            x = self.bridge(x)
+            for i, block in enumerate(self.up_blocks, 1):
+                key = f"layer_{CLUNet.DEPTH - 1 - i}"
+                x = block(x, pre_pools[key])
+            output_feature_map = x
+            mask = self.out(x)
+            del pre_pools
         
-        if (aux == True) & (pretraining == False):
-            return mask, clearn_out
-        elif (aux == True) & (pretraining == True):
-            return clearn_out
+        if (aux is not None) & (pretraining == False):
+            return mask, aux_out
+        elif (aux is not None) & (pretraining == True):
+            return aux_out
         else:
             return mask
 

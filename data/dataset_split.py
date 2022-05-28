@@ -90,7 +90,7 @@ def dataset_split(dataset_path, output_folder, train_prop=0.7, val_prop=0.2, tes
 
     #Random sort, make sure no more than one repeat in a batch
     min_check = 0
-    while min_check <= 2:
+    while min_check <= 1:
         data1 = data1.sample(frac=1).reset_index(drop=True)
         data1['batch'] = data1.index // 16
         check = data1.groupby('batch')['case'].count()
@@ -99,7 +99,7 @@ def dataset_split(dataset_path, output_folder, train_prop=0.7, val_prop=0.2, tes
     data2 = pd.merge(data[data['dummy'] == 2], data1[['pair_idx', 'batch']], on = 'pair_idx')
     data = pd.concat([data1, data2]).reset_index(drop=True).sort_values(['batch', 'pair_idx'])
 
-    n_batches = len(data)/32.0
+    n_batches = max(data1['batch'])
     train_batch = int(math.ceil(train_prop * n_batches))
     
     # Split into train and val+test datasets

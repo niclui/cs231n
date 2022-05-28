@@ -47,6 +47,7 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.batch_size = params['batch_size']
         self.model_name = params['model']
         self.pretraining = params['pretraining']
+        self.aux = params['aux_task']
 
 #DEBUGGING STEPS - DISPLAY IMAGES########################################
 
@@ -83,18 +84,18 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         masks = torch.stack(masks)
 
         #Display images
-        #self.plot_batch(images, masks, batch_idx, 5)
+        self.plot_batch(images, masks, batch_idx, 5)
 
-        if ((self.model_name == "CLUNet") & (self.pretraining== False)):
-            logits_masks, clearn_out = self.model(images, aux = True)
-            loss, simclr_loss = self.loss(logits_masks, masks, clearn_out)
-            self.log("simclr_loss", simclr_loss)
+        if ((self.model_name == "CLUNet") & (self.pretraining== False) & (self.aux is not None)):
+            logits_masks, aux_out = self.model(images, aux = self.aux)
+            loss,aux_loss = self.loss(logits_masks, masks, self.aux, aux_out)
+            self.log(f"{aux}_loss", aux_loss)
             self.log("loss", loss)
 
-        elif ((self.model_name == "CLUNet") & (self.pretraining == True)):
-            clearn_out = self.model(images, aux = True, pretraining = True)
-            loss = self.loss(None, None, clearn_out)
-            self.log("simclr_loss", loss)
+        elif ((self.model_name == "CLUNet") & self.pretraining & (self.aux is not None)):
+            aux_out = self.model(images, aux = self.aux, pretraining = True)
+            loss = self.loss(None, None, self.aux, aux_out)
+            self.log(f"{self.aux}_loss", loss)
 
         else:
             logits_masks = self.model(images)
@@ -110,8 +111,8 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         masks = torch.stack(masks)
         
         if self.pretraining:
-            clearn_out = self.model(images, aux = True, pretraining = True)
-            loss = self.loss(None, None, clearn_out)
+            aux_out = self.model(images, aux = self.aux, pretraining = True)
+            loss = self.loss(None, None, self.aux, aux_out)
         else:
             logits_masks = self.model(images)
             loss = self.loss(logits_masks, masks)
@@ -155,7 +156,11 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.evaluator.process(batch, logits_masks)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=2e-3)
+
+        if self.pretraining:
+            optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.parameters()), lr=2e-3)
+        else:
+            optimizer = torch.optim.Adam(self.parameters(), lr=2e-3)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,T_max=50, eta_min=1e-6)
         return [optimizer], [scheduler]
 

@@ -9,11 +9,13 @@ import torch
 
 def get_model(model_args):
     model_args_ = model_args
+    pretraining = model_args_['pretraining']
+    
 
     if model_args_.get("model") == 'CLUNet':
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        model = CLUNet(in_channels=3, n_classes=3, n_channels=48)
+        model = CLUNet(in_channels=3, n_classes=3, n_channels=32, pretraining = pretraining) #Adjust accordingly
         model.to(device)
         return model
 

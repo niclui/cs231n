@@ -3,28 +3,11 @@ import torchvision.transforms as T
 
 from util.constants import IMAGENET_MEAN, IMAGENET_STD
 
-#import albumentations as A
 import cv2
 
 def get_transforms(split, augmentation, image_size):
 
     IMAGE_SIZE = (224, 224)
-
-    #data_transforms = {
-    #        "train": A.Compose([
-    #            A.Resize(*IMAGE_SIZE, interpolation=cv2.INTER_NEAREST),
-    #           A.HorizontalFlip(),
-    #            A.VerticalFlip(),
-    #            A.OneOf([
-    #                A.RandomContrast(),
-    #                A.RandomGamma(),
-    #                A.RandomBrightness(),
-    #                ], p=0.2),
-    #            ], p=1.0),
-    #        "valid": A.Compose([
-    #            A.Resize(*IMAGE_SIZE, interpolation=cv2.INTER_NEAREST),
-    #            ], p=1.0)
-    #    }
     
     if split != "train":
         augmentation = 'none' # Only do augmentations if its the training dataset
@@ -39,7 +22,15 @@ def get_transforms(split, augmentation, image_size):
                        T.RandomVerticalFlip(),
                        T.RandomHorizontalFlip(),
                        T.RandomAffine(degrees=90, translate=(0.03, 0.03), scale=(0.95, 1.05)),
-                       T.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2)]
+                       T.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.2)],
+        'simclr': [T.RandomHorizontalFlip(),
+                    T.RandomResizedCrop(size=96),
+                    T.RandomApply([
+                    T.ColorJitter(brightness=0.5,contrast=0.5,
+                     saturation=0.5,
+                     hue=0.1)], p=0.8),
+                     T.RandomGrayscale(p=0.2),
+                    T.GaussianBlur(kernel_size=9)]
     }
         
     augmentation_transform = augmentation_transforms[augmentation] 
