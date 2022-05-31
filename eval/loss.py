@@ -68,6 +68,8 @@ def simclr_loss_vectorized(out_left, out_right, tau):
     # This binary mask zeros out terms where k=i.
     mask = (torch.ones_like(exponential, device=device) - torch.eye(2 * N, device=device)).to(device).bool()
     
+   #print((sim_matrix * mask).argmax(dim = 1))
+
     # We apply the binary mask.
     exponential = exponential.masked_select(mask).view(2 * N, -1)
     
@@ -86,6 +88,9 @@ def simclr_loss_vectorized(out_left, out_right, tau):
     loss = None
 
     loss = torch.sum(-torch.log(numerator/denom[:N]) - torch.log(numerator/denom[N:])) / (2*N)
+
+    print(numerator/denom[:N])
+    print(numerator/denom[N:])
     
     return loss
 
@@ -106,9 +111,9 @@ class CombinedLoss(nn.Module):
                 aux_features = aux_features[:-1, :]
                 N, D = aux_features.shape
 
-            aux_features = aux_features.reshape(2, N//2, D)
+            aux_features = aux_features.reshape(N//2, 2, D)
 
-            SimClrLoss = simclr_loss_vectorized(aux_features[0], aux_features[1], tau = 0.1)
+            SimClrLoss = simclr_loss_vectorized(aux_features[:, 0, :], aux_features[:, 1, :],  tau = 0.1)
 
             if pred is None:
                 return SimClrLoss

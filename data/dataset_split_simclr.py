@@ -41,6 +41,8 @@ def dataset_split(dataset_path, output_folder, train_prop=0.7, val_prop=0.2, tes
     data['dummy'] = data.groupby(['pair_idx'])['dummy'].cumsum()
     data1 = data[data['dummy'] == 1]
 
+    pdb.set_trace()
+
     #Random sort, make sure no more than one repeat in a batch
     min_check = 0
     while min_check <= 1:
@@ -61,8 +63,6 @@ def dataset_split(dataset_path, output_folder, train_prop=0.7, val_prop=0.2, tes
     train = data[data['batch'] <= train_batch]
     val = data[(data['batch'] > train_batch) & (data['batch'] <= train_batch + val_batch)]
     test = data[data['batch'] > train_batch + val_batch]
-
-    pdb.set_trace()
 
     # Output train, val, test datasets
     train.to_csv(os.path.join(output_folder, "train_dataset.csv"), index=False)

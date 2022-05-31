@@ -19,7 +19,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, transforms=None, split='train', 
                 augmentation=None, image_size=224, pretrained=False):
         try:
-            self._df = pd.read_csv(dataset_path).sort_values(['batch', 'pair_idx'])
+            self._df = pd.read_csv(dataset_path).sort_values(['batch', 'pair_idx']).reset_index(drop = True)
         except:
             self._df = pd.read_csv(dataset_path)
         #self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
@@ -43,26 +43,11 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
 
-        #Using cv2
         image = cv2.imread(self._image_path[index], cv2.IMREAD_UNCHANGED)
-        #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        transform = A.Compose([
-            A.Resize(C.IMAGE_SIZE, C.IMAGE_SIZE),
-            A.RandomResizedCrop(C.IMAGE_SIZE, C.IMAGE_SIZE),
-            AA.transforms.HorizontalFlip(p = 0.5),
-            A.OneOf([
-                #A.ColorJitter(brightness=0.5,contrast=0.5,
-                #saturation=0.5, hue=0.1, p=0.8),
-                A.ToGray(p=0.2),
-                A.GaussianBlur()
-            ])])
-
-        image = transform(image = image)['image']
-
         image = (image - image.min())/(image.max() - image.min())*255.0 
+        image = cv2.resize(image, (C.IMAGE_SIZE, C.IMAGE_SIZE))
         image = np.tile(image[...,None], [1, 1, 3])
-        image = image.astype(np.float32)
+        image = image.astype(np.float32) /255.
 
         mask = np.load(self._mask_path[index])
 

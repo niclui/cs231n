@@ -70,6 +70,31 @@ class SegmentationEvaluator(DatasetEvaluator):
     def evaluate(self):
         return segmentation.get_metrics(self.preds, self.truth)
 
+class SimCLREvaluator(DatasetEvaluator):
+    def __init__(self, threshold = 0.5):
+        super().__init__()
+        self.preds = []
+        self.truth = []
+        self.threshold = threshold
+
+    def reset(self):
+        self.preds = []
+        self.truth = []
+        return
+
+    def process(self, inputs, logits_masks):
+        images, masks = map(list, zip(*inputs))
+        images = torch.stack(images)
+        masks = torch.stack(masks)
+
+        prob_masks = sigmoid(logits_masks)
+        self.truth.append(masks.detach())
+        self.preds.append(prob_masks >= self.threshold)
+        return
+
+    def evaluate(self):
+        return segmentation.get_metrics(self.preds, self.truth)
+
 class BinaryClassificationEvaluator(
         ignite.metrics.EpochMetric,
         DatasetEvaluator):

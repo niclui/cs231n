@@ -7,7 +7,7 @@ from ignite.metrics import Accuracy
 import segmentation_models_pytorch as smp
 
 from models import get_model
-from eval import get_loss_fn, SegmentationEvaluator
+from eval import get_loss_fn, SegmentationEvaluator, SimCLREvaluator
 from util import constants as C
 from .logger import TFLogger
 from data import SegmentationDemoDataset, SegmentationDataset
@@ -40,7 +40,6 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.model = get_model(params) #Instantiates model from model folder
         self.loss = get_loss_fn(params)
         self.dataset_folder = params['dataset_folder']
-        self.evaluator = SegmentationEvaluator()
         self.augmentation = params['augmentation']
         self.n_workers = params['num_workers']
         self.lr = params['lr']
@@ -48,6 +47,11 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         self.model_name = params['model']
         self.pretraining = params['pretraining']
         self.aux = params['aux_task']
+        #if self.aux == "simclr":
+        #    self.evaluator = SimCLREvaluator()
+        #else:
+        self.evaluator = SegmentationEvaluator()
+        
 
 #DEBUGGING STEPS - DISPLAY IMAGES########################################
 
