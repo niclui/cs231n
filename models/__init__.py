@@ -3,6 +3,7 @@ import argparse
 from util import Args
 from .classification import *
 from .segmentation import *
+#from .segmentation_resnet import *
 from .detection import * #Import all files from the folder in the future so you can just do folder.method
 
 import torch

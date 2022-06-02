@@ -89,8 +89,8 @@ def simclr_loss_vectorized(out_left, out_right, tau):
 
     loss = torch.sum(-torch.log(numerator/denom[:N]) - torch.log(numerator/denom[N:])) / (2*N)
 
-    print(numerator/denom[:N])
-    print(numerator/denom[N:])
+    #print(numerator/denom[:N])
+    #print(numerator/denom[N:])
     
     return loss
 
@@ -119,7 +119,8 @@ class CombinedLoss(nn.Module):
                 return SimClrLoss
             
             else:
-                Loss = 0.9 * Loss + 0.1 + SimClrLoss
+                Loss = 0.9 * Loss + 0.1 * SimClrLoss
+                #print('simclr_loss:', SimClrLoss)
                 return Loss, SimClrLoss
 
         elif aux == "reg":

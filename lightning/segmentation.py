@@ -88,12 +88,12 @@ class SegmentationTask(pl.LightningModule, TFLogger):
         masks = torch.stack(masks)
 
         #Display images
-        self.plot_batch(images, masks, batch_idx, 5)
+        #self.plot_batch(images, masks, batch_idx, 5)
 
         if ((self.model_name == "CLUNet") & (self.pretraining== False) & (self.aux is not None)):
             logits_masks, aux_out = self.model(images, aux = self.aux)
-            loss,aux_loss = self.loss(logits_masks, masks, self.aux, aux_out)
-            self.log(f"{aux}_loss", aux_loss)
+            loss, aux_loss = self.loss(logits_masks, masks, self.aux, aux_out)
+            self.log(f"{self.aux}_loss", aux_loss)
             self.log("loss", loss)
 
         elif ((self.model_name == "CLUNet") & self.pretraining & (self.aux is not None)):
