@@ -14,6 +14,8 @@ def get_task(args):
         return SegmentationTask(args)
     elif args.get("task") == "multitask":
         return MultitaskTask(args)
+    elif args.get("task") == "filmtask":
+        return FilmTask(args)
     else:
         return DetectionTask(args)
 
@@ -25,6 +27,8 @@ def load_task(ckpt_path, **kwargs):
         task = SegmentationTask
     elif args.get("task") == "multitask":
         task = MultitaskTask
+    elif args.get("task") == "filmtask":
+        task = FilmTask
     else:
         task = DetectionTask
     return task.load_from_checkpoint(ckpt_path)

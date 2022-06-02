@@ -22,6 +22,12 @@ def get_model(model_args):
         model.to(device)
         return model
 
+    elif model_args_.get("model") == 'Filmtask':
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model = filmUNet(in_channels=3, n_classes=3, n_channels=48)
+        model.to(device)
+        return model
+
     else:
         if isinstance(model_args, argparse.Namespace):
             model_args_ = Args(vars(model_args))

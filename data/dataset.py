@@ -15,7 +15,7 @@ import cv2
 class SegmentationDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, transforms=None, split='train', 
                 augmentation=None, image_size=224, pretrained=False):
-        self._df = pd.read_csv(dataset_path).sort_values(['batch', 'pair_idx'])
+        self._df = pd.read_csv(dataset_path)
         #self._df = self._df.sample(frac = 0.15).reset_index() # Careful of index_col here
         self._image_path = self._df['image_path']
         self._mask_path = self._df['mask_path']      
@@ -27,6 +27,13 @@ class SegmentationDataset(torch.utils.data.Dataset):
             image_size=image_size
         )
         self._pos_vec = self._df['positional_val']
+        self._case = self._df["case"].str[4:]
+        self._day = pd. to_numeric(self._df["day"].str[3:])
+        self._slice = pd. to_numeric(self._df["slice_id"])
+        self._slice_height = pd. to_numeric(self._df["slice_height"])
+        self._slice_width = pd. to_numeric(self._df["slice_width"])
+        self._pix_height = pd. to_numeric(self._df["pixel_height"])
+        self._pix_width = pd. to_numeric(self._df["pixel_width"])
 
     def get_batch_list(self):
         indices = list(self._df.index)
@@ -53,9 +60,15 @@ class SegmentationDataset(torch.utils.data.Dataset):
             image = self._transforms(image)
             mask = self._transforms(mask)
 
-        positional_vecs = torch.tensor(np.float32(self._pos_vec[index]))
+        # Pos vector
+        positional_vecs = torch.tensor([np.float32(self._pos_vec[index])])
         
-        return image, mask, positional_vecs
+        # Meta Data
+        meta = [self._pos_vec[index], self._case[index], self._day[index], self._slice_height[index], self._slice_width[index], self._pix_height[index], self._pix_width[index]]
+        meta = torch.tensor(np.float32(meta))
+        # Meta is of shape (bs, 7)
+        
+        return image, mask, positional_vecs, meta
 
 class SegmentationDemoDataset(SegmentationDataset):
     def __init__(self):

@@ -101,11 +101,17 @@ def dataset_split(dataset_path, output_folder, train_prop=0.7, val_prop=0.2, tes
 
     n_batches = len(data)/32.0
     train_batch = int(math.ceil(train_prop * n_batches))
+
+    # Generate the positional vectors
+    a = data.groupby(["case","day"]).count()['slice_id'].reset_index()
+    a.columns=['case','day','total_slices']
+
+    data = pd.merge(data, a, how='left', on = ['case','day'])
+    data['positional_val'] = data['slice_id'] / data['total_slices']
     
     # Split into train and val+test datasets
     #train, val_test = train_test_split(data, test_size=val_prop+test_prop, random_state=0)
-    train = data[data['batch'] <= train_batch]
-    others = data[data['batch'] > train_batch]
+    train, others = train_test_split(data, test_size=1-train_prop, random_state=0)
 
     # Split the val+test datasets into validation and test
     val, test = train_test_split(others, test_size=test_prop/(val_prop+test_prop), random_state=0)

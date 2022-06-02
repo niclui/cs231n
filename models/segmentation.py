@@ -143,6 +143,78 @@ class Multitask(nn.Module):
         return mask, regress_out
 
 
+class filmUNet(nn.Module):
+    def __init__(self, in_channels, n_classes, n_channels):
+        super().__init__()
+        self.in_channels = in_channels
+        self.n_classes = n_classes
+        self.n_channels = n_channels
+
+        # Encoder-Decoder Network
+        self.conv = DoubleConv(in_channels, n_channels)
+        self.enc1 = Down(n_channels, 2 * n_channels)
+        self.enc2 = Down(2 * n_channels, 4 * n_channels)
+        self.enc3 = Down(4 * n_channels, 8 * n_channels)
+        self.enc4 = Down(8 * n_channels, 16 * n_channels)
+        self.enc5 = Down(16 * n_channels, 16 * n_channels)
+        # Output is of shape (48, 48)
+        
+        self.dec1 = Up(32 * n_channels, 8 * n_channels)
+        self.dec2 = Up(16 * n_channels, 4 * n_channels)
+        self.dec3 = Up(8 * n_channels, 2 * n_channels)
+        self.dec4 = Up(4 * n_channels, n_channels)
+        self.dec5 = Up(2 * n_channels, n_channels)
+        self.out = Out(n_channels, n_classes)
+
+        # Metadata FCN - Weights
+        self.fc1 = nn.Linear(7, 128, bias=True)
+        self.fc2 = nn.Linear(128, 64, bias=True)
+        self.fc3 = nn.Linear(64, 48, bias=True)
+        # The output will be of size (bs, 48)
+
+        # Metadata FCN - Bias
+        self.bfc1 = nn.Linear(7, 128, bias=True)
+        self.bfc2 = nn.Linear(128, 64, bias=True)
+        self.bfc3 = nn.Linear(64, 48, bias=True)
+        # The output will be of size (bs, 48)
+
+
+    def forward(self, x, meta, train = False):
+
+        # Metadata fcn for conditioning weights
+        m1 = self.fc1(meta)
+        m2 = self.fc2(m1)
+        m3 = self.fc3(m2)
+        
+        # Metadata fn for conditioning bias
+        bm1 = self.bfc1(meta)
+        bm2 = self.bfc2(bm1)
+        bm3 = self.bfc3(bm2)
+
+        # Encoder. First, apply Conv layer to generate a feature map.
+        x1 = self.conv(x)
+
+        # Incorporate meta data and linearly condition on the feature map
+        gamma = m3.view(x1.size(0), x1.size(1), 1, 1) 
+        beta = bm3.view(x1.size(0), x1.size(1), 1, 1) 
+        x1 = x1 * gamma + beta
+
+        x2 = self.enc1(x1)
+        x3 = self.enc2(x2)
+        x4 = self.enc3(x3)
+        x5 = self.enc4(x4)
+        x6 = self.enc5(x5)
+
+        # Generate mask
+        mask = self.dec1(x6, x5)
+        mask = self.dec2(mask, x4)
+        mask = self.dec3(mask, x3)
+        mask = self.dec4(mask, x2)
+        mask = self.dec5(mask, x1)
+        mask = self.out(mask)
+        
+        return mask
+
 class CLUNet(nn.Module):
     def __init__(self, in_channels, n_classes, n_channels):
         super().__init__()
